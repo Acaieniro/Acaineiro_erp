@@ -1,0 +1,9 @@
+node_modules/
+.env
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+www/js/app.js
+backend/public/uploads/
+toqueteste.mp3

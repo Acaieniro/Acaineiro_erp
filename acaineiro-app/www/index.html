@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Açaineiro</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app">
+    <header id="app-header">
+      <div class="header-content">
+        <div class="header-left">
+          <img src="logo/logo.png" alt="Açaineiro" class="header-logo" onerror="this.style.display='none'" style="background:#E5DEC9;padding:8px;border-radius:12px;width:45px;height:45px;object-fit:contain;">
+          <div class="header-text">
+            <h1 class="logo">AÇAINEIRO</h1>
+            <span class="slogan">O verdadeiro açaí mineiro</span>
+          </div>
+        </div>
+        <div class="header-right">
+          <span class="header-hours" id="header-hours">13:00 - 20:30</span>
+        </div>
+      </div>
+    </header>
+
+    <main id="page-content">
+      <!-- HOME -->
+      <section id="page-home" class="page active">
+
+        <!-- Banner Carousel -->
+        <div class="banner-carousel" id="banner-carousel">
+          <div class="banner-track" id="banner-track"></div>
+          <div class="banner-dots" id="banner-dots"></div>
+        </div>
+
+        <!-- Quick Actions Grid -->
+        <div class="menu-grid">
+          <div class="menu-button" onclick="navigateTo('menu')">
+            <span class="menu-btn-icon">📋</span>
+            <span>Cardápio</span>
+          </div>
+          <div class="menu-button" onclick="navigateTo('cupons')">
+            <span class="menu-btn-icon">🏷️</span>
+            <span>Cupons</span>
+          </div>
+          <div class="menu-button" onclick="navigateTo('cart')">
+            <span class="menu-btn-icon">🛒</span>
+            <span>Carrinho</span>
+          </div>
+          <div class="menu-button" onclick="navigateTo('promos')">
+            <span class="menu-btn-icon">🔥</span>
+            <span>Promoções</span>
+          </div>
+          <div class="menu-button" onclick="navigateTo('orders')">
+            <span class="menu-btn-icon">📦</span>
+            <span>Pedidos</span>
+          </div>
+        </div>
+
+        <!-- Featured Products -->
+        <div class="section-header">
+          <h2 class="section-title">⭐ Destaques</h2>
+          <span class="section-link" onclick="navigateTo('menu')">Ver tudo →</span>
+        </div>
+        <div class="featured-scroll" id="featured-products"></div>
+
+        <!-- Mais Vendidos -->
+        <div class="section-header">
+          <h2 class="section-title">🏆 Os Mais Vendidos</h2>
+          <span class="section-link" onclick="navigateTo('menu')">Ver tudo →</span>
+        </div>
+        <div class="featured-scroll" id="top-products"></div>
+
+        <!-- Combo Promocional -->
+        <div class="section-header">
+          <h2 class="section-title">🎯 Combos Especiais</h2>
+        </div>
+        <div class="combos-grid" id="combos-grid"></div>
+
+        <!-- Cupom do Dia -->
+        <div id="cupom-do-dia" class="cupom-dia-card" onclick="navigateTo('cupons')" style="cursor:pointer;display:none;">
+          <div class="cupom-dia-header">
+            <span class="cupom-dia-icon">🏷️</span>
+            <div class="cupom-dia-info">
+              <h3>Cupom do Dia</h3>
+              <span class="cupom-dia-sub">Clique para conferir</span>
+            </div>
+            <span class="cupom-dia-arrow">→</span>
+          </div>
+          <div class="cupom-dia-preview" id="cupom-dia-preview"></div>
+        </div>
+
+        <!-- Promoção Relâmpago -->
+        <div class="flash-sale" id="flash-sale">
+          <div class="flash-header">
+            <span class="flash-icon">⚡</span>
+            <div class="flash-info">
+              <h3>Promoção Relâmpago</h3>
+              <span class="flash-sub">Ofertas que acabam em:</span>
+            </div>
+            <div class="flash-timer" id="flash-timer">
+              <div class="timer-unit"><span id="flash-hours">02</span><small>horas</small></div>
+              <span class="timer-sep">:</span>
+              <div class="timer-unit"><span id="flash-minutes">30</span><small>min</small></div>
+              <span class="timer-sep">:</span>
+              <div class="timer-unit"><span id="flash-seconds">00</span><small>seg</small></div>
+            </div>
+          </div>
+          <div class="featured-scroll" id="flash-products"></div>
+        </div>
+
+        <!-- Fidelidade -->
+        <div class="loyalty-card" onclick="navigateTo('cupons')">
+          <div class="loyalty-header">
+            <span class="loyalty-icon">🏆</span>
+            <div class="loyalty-info">
+              <h3>Programa de Fidelidade</h3>
+              <span class="loyalty-sub">Ganhe um açaí grátis a cada 10 compras!</span>
+            </div>
+          </div>
+          <div class="loyalty-progress" id="loyalty-progress">
+            <div class="loyalty-stamps" id="loyalty-stamps"></div>
+            <div class="loyalty-bar">
+              <div class="loyalty-bar-fill" id="loyalty-bar-fill" style="width:0%"></div>
+            </div>
+            <span class="loyalty-count" id="loyalty-count">0 de 10 compras</span>
+          </div>
+        </div>
+
+        <!-- Compartilhar -->
+        <div class="share-card" onclick="shareApp()">
+          <div class="share-content">
+            <span class="share-icon">📤</span>
+            <div class="share-text">
+              <strong>Compartilhe o Açaineiro</strong>
+              <span>Envie para um amigo!</span>
+            </div>
+            <span class="share-arrow">→</span>
+          </div>
+        </div>
+
+        <!-- Info Panels -->
+        <div class="info-panel">
+          <div class="panel-title">📅 Horário de Funcionamento</div>
+          <div class="panel-row"><span>Seg - Dom</span><span id="home-hours-range">13:00 - 20:30</span></div>
+        </div>
+
+        <div class="info-panel">
+          <div class="panel-title">💳 Formas de Pagamento</div>
+          <div class="payment-methods">
+            <span class="pay-item"><span class="dot dot-money"></span>Dinheiro</span>
+            <span class="pay-item"><span class="dot dot-card"></span>Cartão</span>
+            <span class="pay-item"><span class="dot dot-pix"></span>Pix</span>
+          </div>
+        </div>
+
+        <div class="info-panel">
+          <div class="panel-title">📍 Endereço</div>
+          <div class="panel-row"><span id="contact-address">R. Venezuela, 68 - Contagem, MG</span></div>
+        </div>
+      </section>
+
+      <!-- MENU -->
+      <section id="page-menu" class="page">
+        <div class="menu-header">
+          <div class="search-box">
+            <input type="text" id="search-input" placeholder="🔍 Buscar no cardápio...">
+          </div>
+          <div class="menu-tabs" id="menu-categories"></div>
+        </div>
+        <div id="menu-items" class="menu-items"></div>
+      </section>
+
+      <!-- PROMOÇÕES -->
+      <section id="page-promos" class="page">
+        <div class="page-header">
+          <h2>🔥 Promoções</h2>
+          <p class="page-subtitle">Ofertas especiais por tempo limitado</p>
+        </div>
+        <div id="promo-items" class="menu-items"></div>
+      </section>
+
+      <!-- CUPONS -->
+      <section id="page-cupons" class="page">
+        <div class="page-header">
+          <h2>🏷️ Cupons</h2>
+          <p class="page-subtitle">Resgate seus cupons de desconto</p>
+        </div>
+        <div id="coupons-list"></div>
+      </section>
+
+      <!-- CART -->
+      <section id="page-cart" class="page">
+        <h2 style="margin-bottom:16px;">🛒 Meu Carrinho</h2>
+        <div id="cart-items" class="cart-items">
+          <p style="text-align:center;padding:24px;color:#888;">Carrinho vazio</p>
+        </div>
+        <div id="cart-summary" class="cart-summary hidden">
+          <div class="cart-summary-row"><span>Subtotal</span><span id="cart-subtotal">0,00</span></div>
+          <div class="cart-summary-row" id="cart-fee-row"><span>Taxa de entrega</span><span id="cart-fee">0,00</span></div>
+          <div class="cart-summary-row total"><span>Total</span><span id="cart-total">R$ 0,00</span></div>
+          <button class="checkout-btn" onclick="showCheckout()">Finalizar Pedido</button>
+        </div>
+      </section>
+
+      <!-- CHECKOUT -->
+      <section id="page-checkout" class="page">
+        <h2 style="margin-bottom:16px;">📝 Finalizar Pedido</h2>
+        <div class="checkout-form">
+          <h3>Seus Dados</h3>
+          <input type="text" id="ord-name" placeholder="Nome completo" class="checkout-input">
+          <input type="tel" id="ord-phone" placeholder="Telefone (31 99999-8888)" class="checkout-input">
+          <div class="checkout-address-group">
+            <div style="flex:1">
+              <input type="text" id="ord-address" placeholder="Endereço (rua, número)" class="checkout-input">
+              <input type="text" id="ord-neighborhood" placeholder="Bairro" class="checkout-input">
+            </div>
+            <button type="button" id="btn-alt-endereco" class="checkout-alt-address" onclick="toggleAltAddress()" title="Usar outro endereço">✏️</button>
+          </div>
+          <div id="checkout-address-info" class="checkout-address-info hidden"></div>
+          <textarea id="ord-notes" rows="2" placeholder="Observações (opcional)" class="checkout-input"></textarea>
+
+          <h3>🎟️ Cupom de Desconto</h3>
+          <div class="coupon-section" id="coupon-section">
+            <div class="coupon-input-row" id="coupon-input-row" style="display:none;">
+              <input type="text" id="coupon-input" class="checkout-input" placeholder="Digite o código do cupom" style="text-transform:uppercase;margin-bottom:0;">
+              <button class="coupon-apply-btn" onclick="applyCoupon()">Aplicar</button>
+            </div>
+            <div class="coupon-select-row" id="coupon-select-row">
+              <button class="coupon-select-btn" onclick="irResgatarCupom()">🏷️ Escolher Cupom</button>
+            </div>
+            <div class="coupon-applied-row" id="coupon-applied-row" style="display:none;">
+              <div class="coupon-applied-tag">
+                <span class="coupon-applied-icon">🏷️</span>
+                <div class="coupon-applied-info">
+                  <span class="coupon-applied-code" id="coupon-applied-code"></span>
+                  <span class="coupon-applied-discount" id="coupon-applied-discount"></span>
+                </div>
+                <button class="coupon-remove-btn" onclick="removeCoupon()">✕</button>
+              </div>
+            </div>
+            <div id="coupon-feedback" class="coupon-feedback"></div>
+          </div>
+
+          <h3>Forma de Pagamento</h3>
+          <div class="payment-options">
+            <label class="payment-option">
+              <input type="radio" name="payment" value="dinheiro" checked onchange="toggleTroco()">
+              <span>💵 Dinheiro <small>(pago na entrega)</small></span>
+            </label>
+            <label class="payment-option" id="payment-option-cartao">
+              <input type="radio" name="payment" value="cartao" onchange="toggleTroco(); toggleCardType()">
+              <span>💳 Cartão <small>(pagar na entrega)</small></span>
+            </label>
+            <div id="card-type-options" class="hidden" style="display:flex;gap:8px;margin-left:24px;margin-bottom:12px;">
+              <label class="payment-option" style="flex:1;">
+                <input type="radio" name="card_type" value="debito" checked>
+                <span>💳 Débito</span>
+              </label>
+              <label class="payment-option" style="flex:1;">
+                <input type="radio" name="card_type" value="credito">
+                <span>💳 Crédito</span>
+              </label>
+            </div>
+            <label class="payment-option">
+              <input type="radio" name="payment" value="pix" onchange="toggleTroco()">
+              <span>💠 Pix</span>
+            </label>
+          </div>
+
+          <div id="troco-section" class="checkout-input-group">
+            <h3>Troco para quanto?</h3>
+            <input type="number" id="ord-troco" class="checkout-input" placeholder="Ex: 50" step="1" min="0" oninput="calcTroco()">
+            <p id="troco-result" style="font-size:14px;font-weight:600;color:var(--green);margin-top:4px;display:none;"></p>
+          </div>
+
+          <div class="checkout-resumo">
+            <h3>Resumo</h3>
+            <div id="checkout-items"></div>
+            <div id="checkout-coupon-row" class="cart-summary-row" style="display:none;">
+              <span>🎟️ Cupom</span>
+              <span id="checkout-discount" style="color:var(--green);">-R$ 0,00</span>
+            </div>
+            <div class="cart-summary-row total"><span>Total</span><span id="checkout-total">R$ 0,00</span></div>
+          </div>
+
+          <button class="checkout-btn" onclick="submitOrder()">✅ Confirmar Pedido</button>
+        </div>
+      </section>
+
+      <!-- ORDER TRACKING -->
+      <section id="page-tracking" class="page">
+        <div id="tracking-content">
+          <div style="text-align:center;padding:24px 0;">
+            <div style="font-size:48px;margin-bottom:8px;">🎉</div>
+            <h2 style="color:var(--purple-dark);">Pedido Confirmado!</h2>
+            <p style="color:var(--text-light);">Seu pedido <strong id="tracking-id">#0</strong></p>
+            <p style="color:var(--text-light);">Total: <strong id="tracking-total">R$ 0,00</strong></p>
+          </div>
+
+          <div class="tracking-timeline" id="tracking-timeline">
+            <div class="tracking-step active" data-step="novo">
+              <div class="step-icon">📥</div>
+              <div class="step-info">
+                <strong>Pedido Recebido</strong>
+                <span>Aguardando confirmação da loja</span>
+              </div>
+            </div>
+            <div class="tracking-step" data-step="preparando">
+              <div class="step-icon">👨‍🍳</div>
+              <div class="step-info">
+                <strong>Preparando</strong>
+                <span>Seu pedido está sendo preparado</span>
+              </div>
+            </div>
+            <div class="tracking-step" data-step="entregando">
+              <div class="step-icon">🚚</div>
+              <div class="step-info">
+                <strong>Saiu pra Entrega</strong>
+                <span>Seu pedido está a caminho</span>
+              </div>
+            </div>
+            <div class="tracking-step" data-step="entregue">
+              <div class="step-icon">✅</div>
+              <div class="step-info">
+                <strong>Entregue</strong>
+                <span>Pedido entregue! Confirme o recebimento</span>
+              </div>
+            </div>
+            <div class="tracking-step" data-step="finalizado">
+              <div class="step-icon">🎉</div>
+              <div class="step-info">
+                <strong>Finalizado</strong>
+                <span>Pedido confirmado por você!</span>
+              </div>
+            </div>
+            <div class="tracking-step" data-step="cancelado">
+              <div class="step-icon">❌</div>
+              <div class="step-info">
+                <strong>Cancelado</strong>
+                <span>Pedido cancelado</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="tracking-details" id="tracking-details">
+            <h3>📋 Detalhes do Pedido</h3>
+            <div id="tracking-items"></div>
+            <div class="tracking-info">
+              <p id="tracking-payment">💳 Pagamento: <span></span></p>
+              <p id="tracking-address">📍 Endereço: <span></span></p>
+              <p id="tracking-notes">📝 Observações: <span></span></p>
+            </div>
+          </div>
+
+          <button id="btn-confirm-delivery" class="checkout-btn confirm-btn hidden" onclick="confirmDelivery()">
+            ✅ Confirmar Recebimento
+          </button>
+          <button id="btn-cancel-order" class="checkout-btn" style="background:#888;margin-top:8px;display:none;" onclick="cancelOrderFromTracking()">
+            ❌ Cancelar Pedido
+          </button>
+
+          <button class="checkout-btn" style="margin-top:16px;" onclick="navigateTo('home')">Voltar ao Início</button>
+        </div>
+      </section>
+
+      <!-- PAYMENT -->
+      <section id="page-payment" class="page">
+        <h2 id="payment-title" style="margin-bottom:16px;">💠 Pagamento</h2>
+        <div id="payment-content" class="checkout-form">
+          <p style="text-align:center;padding:40px;color:#888;">⏳ Processando...</p>
+        </div>
+      </section>
+
+      <!-- MY ORDERS -->
+      <section id="page-orders" class="page">
+        <h2 style="margin-bottom:16px;">📦 Meus Pedidos</h2>
+        <div id="my-orders-list">
+          <p style="text-align:center;padding:40px;color:#888;">Nenhum pedido ainda</p>
+        </div>
+      </section>
+
+      <!-- ACCOUNT -->
+      <section id="page-account" class="page">
+        <!-- LOGGED OUT -->
+        <div id="account-logged-out">
+          <h2 style="font-size:20px;font-weight:900;color:#3d1b6d;margin-bottom:16px;">MINHA CONTA</h2>
+          <div class="acc-card">
+            <div class="acc-card-header">
+              <span>👤 MINHA CONTA</span>
+            </div>
+            <div class="acc-subtitle">FAÇA LOGIN OU CRIE SUA CONTA</div>
+            <div id="auth-section">
+              <label style="font-size:13px;font-weight:700;color:#3d1b6d;margin-bottom:8px;display:block;">Entrar</label>
+              <input type="tel" id="auth-phone" class="acc-auth-input" placeholder="Telefone (31 99999-8888)">
+              <input type="password" id="auth-pass" class="acc-auth-input" placeholder="Senha" onkeydown="if(event.key==='Enter') loginUser()">
+              <button class="acc-auth-btn acc-auth-btn-primary" onclick="loginUser()">Entrar</button>
+              <div class="acc-auth-or">ou</div>
+              <label style="font-size:13px;font-weight:700;color:#3d1b6d;margin-bottom:8px;display:block;">Criar Conta</label>
+              <input type="text" id="reg-name" class="acc-auth-input" placeholder="Nome completo">
+              <input type="tel" id="reg-phone" class="acc-auth-input" placeholder="Telefone (31 99999-8888)">
+              <input type="text" id="reg-cpf" class="acc-auth-input" placeholder="CPF (apenas números)" maxlength="11">
+              <input type="password" id="reg-pass" class="acc-auth-input" placeholder="Senha">
+              <input type="text" id="reg-address" class="acc-auth-input" placeholder="Endereço (opcional)">
+              <input type="text" id="reg-neighborhood" class="acc-auth-input" placeholder="Bairro (opcional)">
+              <button class="acc-auth-btn acc-auth-btn-secondary" onclick="registerUser()">Criar Conta</button>
+            </div>
+            <p id="auth-error" class="acc-auth-error"></p>
+          </div>
+        </div>
+
+        <!-- LOGGED IN -->
+        <div id="account-logged-in" style="display:none;">
+          <h2 style="font-size:20px;font-weight:900;color:#3d1b6d;margin-bottom:16px;">MINHA CONTA</h2>
+
+          <!-- Card 1: MEUS DADOS PESSOAIS -->
+          <div class="acc-card">
+            <div class="acc-card-hdr">
+              <span class="acc-hdr-icon">👤</span>
+              <span class="acc-hdr-title">MEUS DADOS PESSOAIS</span>
+            </div>
+            <div class="acc-data-row">
+              <span class="acc-data-icon">👤</span>
+              <span class="acc-data-label">Nome Completo:</span>
+              <span class="acc-data-value" id="account-name">Carregando...</span>
+            </div>
+            <div class="acc-data-row">
+              <span class="acc-data-icon">📧</span>
+              <span class="acc-data-label">E-mail:</span>
+              <span class="acc-data-value" id="account-email">—</span>
+            </div>
+            <div class="acc-data-row">
+              <span class="acc-data-icon">📱</span>
+              <span class="acc-data-label">Celular:</span>
+              <span class="acc-data-value" id="account-phone">—</span>
+            </div>
+            <div class="acc-card-actions">
+              <button class="acc-sub-btn" onclick="toggleProfileEdit()">Alterar Senha</button>
+              <button class="acc-sub-btn" onclick="toggleProfileEdit()">Editar Dados</button>
+            </div>
+            <div id="profile-edit-form" class="hidden" style="margin-top:16px;border-top:1px solid #f0f0f0;padding-top:16px;">
+              <input type="text" id="prof-name" class="acc-auth-input" placeholder="Nome completo">
+              <input type="tel" id="prof-phone" class="acc-auth-input" placeholder="Telefone">
+              <input type="text" id="prof-cpf" class="acc-auth-input" placeholder="CPF (só números)" maxlength="11">
+              <div style="display:flex;gap:8px;">
+                <input type="text" id="prof-cep" class="acc-auth-input" placeholder="CEP" maxlength="8" style="flex:1;">
+                <input type="text" id="prof-address_number" class="acc-auth-input" placeholder="Nº" maxlength="10" style="flex:0 0 70px;">
+              </div>
+              <input type="text" id="prof-address" class="acc-auth-input" placeholder="Endereço (rua)">
+              <input type="text" id="prof-neighborhood" class="acc-auth-input" placeholder="Bairro">
+              <button class="acc-auth-btn acc-auth-btn-primary" onclick="saveProfile()" style="margin-top:8px;">💾 Salvar Dados</button>
+            </div>
+          </div>
+
+          <!-- Card 2: ENDEREÇOS SALVOS -->
+          <div class="acc-card">
+            <div class="acc-card-hdr">
+              <span class="acc-hdr-icon">📍</span>
+              <span class="acc-hdr-title">ENDEREÇOS SALVOS</span>
+            </div>
+            <div id="saved-addresses-list">
+              <div class="acc-loc-row">
+                <span class="acc-loc-icon">📍</span>
+                <span class="acc-loc-text">Rua do Rosário, 123 - Centro, Contagem</span>
+                <span class="acc-edit-icon">✏️</span>
+              </div>
+              <div class="acc-divider"></div>
+              <div class="acc-loc-row">
+                <span class="acc-loc-icon">📍</span>
+                <span class="acc-loc-text">Av. João César de Oliveira, 456 - Eldorado, Contagem</span>
+                <span class="acc-edit-icon">✏️</span>
+              </div>
+            </div>
+            <div class="acc-add-btn">Adicionar Novo Endereço +</div>
+          </div>
+
+          <!-- Card 3: FORMAS DE PAGAMENTO SALVAS -->
+          <div class="acc-card">
+            <div class="acc-card-hdr">
+              <span class="acc-hdr-icon">💳</span>
+              <span class="acc-hdr-title">FORMAS DE PAGAMENTO SALVAS</span>
+            </div>
+            <div class="acc-loc-row">
+              <span class="acc-loc-icon">💳</span>
+              <span class="acc-loc-text">Cartão de Crédito **** 1234 (Visa)</span>
+              <span class="acc-edit-icon">✏️</span>
+            </div>
+            <div class="acc-divider"></div>
+            <div class="acc-loc-row">
+              <span class="acc-loc-icon">💠</span>
+              <span class="acc-loc-text">Chave Pix (Celular)</span>
+              <span class="acc-edit-icon">✏️</span>
+            </div>
+            <div class="acc-add-btn">Adicionar Novo Pagamento +</div>
+          </div>
+
+          <!-- Card 4: CONFIGURAÇÕES E AJUDA -->
+          <div class="acc-card">
+            <div class="acc-card-hdr">
+              <span class="acc-hdr-icon">⚙️</span>
+              <span class="acc-hdr-title">CONFIGURAÇÕES E AJUDA</span>
+            </div>
+            <div class="acc-pill-row">
+              <span class="acc-pill">Acessibilidade</span>
+              <span class="acc-pill">Notificações</span>
+              <span class="acc-pill acc-pill-danger">Sair da Conta</span>
+            </div>
+          </div>
+
+          <div class="acc-disclaimer">Imagens Ilustrativas. Preços sujeitos a alteração.&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Válido para Contagem</div>
+        </div>
+      </section>
+
+      <!-- CONTACT -->
+      <section id="page-contact" class="page">
+        <div class="page-header">
+          <h2>📍 Localização</h2>
+          <p class="page-subtitle">Encontre e fale com a gente</p>
+        </div>
+        <div class="acc-card">
+          <div class="map-container" style="border-radius:12px;overflow:hidden;margin:-0px -0px 12px;">
+            <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3751.5435!2d-44.0542!3d-19.9027!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMTnCsDU0JzA5LjciUyA0NMKwMDMnMTUuMSJX!5e0!3m2!1spt-BR!2sbr!4v1" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade" style="width:100%;height:180px;border:none;display:block;"></iframe>
+          </div>
+          <div class="acc-link-row" onclick="window.openWhatsApp()">
+            <span class="acc-link-icon" style="background:#e8f5e9;">📞</span>
+            <span class="acc-link-text">
+              <span class="acc-row-label" style="display:block;font-weight:600;">WhatsApp</span>
+              <span id="contact-phone" style="font-size:12px;color:#666;font-weight:400;">(31) 97578-5413</span>
+            </span>
+            <span class="acc-link-arrow">›</span>
+          </div>
+          <div class="acc-link-row" onclick="window.open('https://www.instagram.com/acaineiro68/','_blank')">
+            <span class="acc-link-icon" style="background:#fce4ec;">📸</span>
+            <span class="acc-link-text">
+              <span class="acc-row-label" style="display:block;font-weight:600;">Instagram</span>
+              <span style="font-size:12px;color:#666;font-weight:400;">@acaineiro68</span>
+            </span>
+            <span class="acc-link-arrow">›</span>
+          </div>
+          <div class="acc-link-row">
+            <span class="acc-link-icon" style="background:#e3f2fd;">📍</span>
+            <span class="acc-link-text">
+              <span class="acc-row-label" style="display:block;font-weight:600;">Endereço</span>
+              <span id="contact-address" style="font-size:12px;color:#666;font-weight:400;">R. Venezuela, 68 - Contagem, MG</span>
+            </span>
+          </div>
+          <div class="acc-link-row">
+            <span class="acc-link-icon" style="background:#fff3e0;">⏰</span>
+            <span class="acc-link-text">
+              <span class="acc-row-label" style="display:block;font-weight:600;">Horário</span>
+              <span id="contact-hours" style="font-size:12px;color:#666;font-weight:400;">Seg-Dom 13h-20h30</span>
+            </span>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <nav id="bottom-nav">
+      <button class="nav-btn active" data-page="home" onclick="navigateTo('home')">
+        <span class="nav-icon">🏠</span><span class="nav-label">Início</span>
+      </button>
+      <button class="nav-btn" data-page="menu" onclick="navigateTo('menu')">
+        <span class="nav-icon">📋</span><span class="nav-label">Cardápio</span>
+      </button>
+      <button class="nav-btn" data-page="cart" onclick="navigateTo('cart')" style="position:relative;">
+        <span class="nav-icon">🛒</span><span class="nav-label">Carrinho</span>
+        <span class="cart-badge hidden" id="cart-badge">0</span>
+      </button>
+      <button class="nav-btn" data-page="orders" onclick="navigateTo('orders'); loadMyOrders();" style="position:relative;">
+        <span class="nav-icon">📦</span><span class="nav-label">Pedidos</span>
+        <span class="cart-badge hidden" id="order-badge" style="background:#DC2626;">0</span>
+      </button>
+      <button class="nav-btn" data-page="account" onclick="navigateTo('account'); loadAccount();">
+        <span class="nav-icon">👤</span><span class="nav-label">Conta</span>
+      </button>
+    </nav>
+  </div>
+
+  <!-- Product Detail Modal -->
+  <div class="modal-overlay hidden" id="product-modal" onclick="closeProductModal(event)">
+    <div class="modal-content">
+      <button class="modal-close" onclick="closeProductModal()">✕</button>
+      <img id="modal-image" class="modal-image" src="" alt="">
+      <div class="modal-body">
+        <h3 id="modal-name" class="modal-name"></h3>
+        <p id="modal-desc" class="modal-desc"></p>
+        <div class="modal-price-row">
+          <span id="modal-price" class="modal-price"></span>
+          <span id="modal-oldprice" class="modal-oldprice"></span>
+        </div>
+        <div class="modal-qty">
+          <button onclick="modalChangeQty(-1)">−</button>
+          <span id="modal-qty">1</span>
+          <button onclick="modalChangeQty(1)">+</button>
+        </div>
+        <button class="modal-add-btn" id="modal-add-btn" onclick="modalAddToCart()">🛒 Adicionar ao Carrinho</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay hidden" id="combo-modal" onclick="closeComboModal(event)">
+    <div class="modal-content">
+      <button class="modal-close" onclick="closeComboModal()">✕</button>
+      <img id="combo-modal-image" class="modal-image" src="" alt="" style="display:none;">
+      <div class="modal-body">
+        <h3 id="combo-modal-name" class="modal-name"></h3>
+        <p id="combo-modal-desc" class="modal-desc"></p>
+        <div id="combo-modal-items" style="margin:12px 0;padding:12px;background:rgba(124,58,237,0.06);border-radius:12px;">
+          <div style="font-size:13px;font-weight:600;color:#666;margin-bottom:8px;">📋 Itens inclusos:</div>
+          <div id="combo-items-list"></div>
+        </div>
+        <div class="modal-price-row">
+          <span id="combo-modal-price" class="modal-price"></span>
+          <span id="combo-modal-oldprice" class="modal-oldprice"></span>
+        </div>
+        <div class="modal-qty">
+          <button onclick="comboModalChangeQty(-1)">−</button>
+          <span id="combo-modal-qty">1</span>
+          <button onclick="comboModalChangeQty(1)">+</button>
+        </div>
+        <button class="modal-add-btn" id="combo-modal-add-btn" onclick="comboModalAddToCart()">🛒 Adicionar ao Carrinho</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" style="display:none;position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a1a2e;color:#fff;padding:12px 24px;border-radius:12px;font-size:14px;font-weight:600;z-index:9999;opacity:0;transition:opacity 0.3s;box-shadow:0 4px 16px rgba(0,0,0,0.3);max-width:90%;text-align:center;"></div>
+
+  <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+  <script src="https://sdk.mercadopago.com/js/v2"></script>
+  <script src="js/app.js?v=2"></script>
+  <script>if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});</script>
+</body>
+</html>
