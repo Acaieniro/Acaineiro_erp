@@ -2,23 +2,31 @@
   "name": "acaineiro-app",
   "version": "1.0.0",
   "description": "App oficial do Açaineiro - O melhor açaí de Contagem",
-  "main": "index.js",
+  "main": "backend/server.js",
   "scripts": {
     "build:capacitor": "npx cap copy android && npx cap sync android",
     "build:apk": "cd android && gradlew assembleDebug",
-    "open:android": "npx cap open android"
+    "open:android": "npx cap open android",
+    "start": "node backend/server.js",
+    "dev": "node backend/server.js"
   },
-  "keywords": [
-    "acai",
-    "acaineiro",
-    "contagem"
-  ],
+  "keywords": ["acai", "acaineiro", "contagem"],
   "author": "Açaineiro",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
     "@capacitor/android": "^8.4.0",
     "@capacitor/cli": "^8.4.0",
-    "@capacitor/core": "^8.4.0"
+    "@capacitor/core": "^8.4.0",
+    "@libsql/client": "^0.17.3",
+    "better-sqlite3": "^12.10.0",
+    "cloudinary": "^1.41.3",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "multer": "^2.1.1",
+    "multer-storage-cloudinary": "^4.0.0",
+    "serverless-http": "^4.0.0",
+    "socket.io": "^4.8.3"
   }
 }
