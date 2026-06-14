@@ -874,6 +874,7 @@
         document.getElementById('admin-screen').classList.remove('hidden');
         initSocket();
         loadAll();
+        startRefresh();
         loadStoreSettings();
       } catch (e) {
         document.getElementById('login-error').classList.remove('hidden');
