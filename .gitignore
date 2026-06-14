@@ -4,6 +4,5 @@ node_modules/
 *.db-journal
 *.db-shm
 *.db-wal
-www/js/app.js
 backend/public/uploads/
 toqueteste.mp3

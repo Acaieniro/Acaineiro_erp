@@ -1,4 +1,4 @@
-const API_URL = `http://${window.location.hostname}:3000`;
+const API_URL = `https://sistema-acaineiro.netlify.app`;
 let cart = [];
 let currentCategory = 'todos';
 let allProducts = [];
@@ -700,9 +700,9 @@ function renderLoyalty() {
 
 // ─── COMPARTILHAR ───
 function shareApp() {
-  const text = '🥣 Venha conhecer o Açaineiro - O melhor açaí de Contagem! Peça já pelo app: http://localhost:3000/app';
+  const text = '🥣 Venha conhecer o Açaineiro - O melhor açaí de Contagem! Peça já pelo app: https://sistema-acaineiro.netlify.app';
   if (navigator.share) {
-    navigator.share({ title: 'Açaineiro', text, url: 'http://localhost:3000/app' }).catch(() => {});
+    navigator.share({ title: 'Açaineiro', text, url: 'https://sistema-acaineiro.netlify.app' }).catch(() => {});
   } else if (navigator.clipboard) {
     navigator.clipboard.writeText(text).then(() => alert('✅ Link copiado! Compartilhe com um amigo.'));
   } else {
