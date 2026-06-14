@@ -908,7 +908,6 @@
           loadOrders(() => {
             const card = document.querySelector(`.order-card[data-order-id="${data.id}"]`);
             if (card) card.classList.add('flash-new');
-            setTimeout(() => printReceipt(data.id), 500);
           });
         });
         socket.on('order-status', (order) => {
@@ -1095,7 +1094,6 @@
               toast(`🆕 Novo pedido #${o.id} - ${o.customer_name} - R$ ${parseFloat(o.total).toFixed(2)}`);
               playSound();
               flashAttention(o.id);
-              setTimeout(() => printReceipt(o.id), 500);
             }
           }
         }
