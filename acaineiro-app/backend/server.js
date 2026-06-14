@@ -577,7 +577,7 @@ app.post('/api/orders', async (req, res) => {
     JSON.stringify(items), total, deliveryFee, payment_method || 'dinheiro',
     payment_method_detail || '', amount_paid || null, change_due || 0, notes || '', appliedCoupon || '');
 
-  if (io) io.to('admin').emit('new-order', { id: r.lastInsertRowid, customer_name: customer.name, total });
+  if (io) io.to('admin').emit('new-order', { id: r.lastInsertRowid, customer_name: customer.name, total, payment_method: payment_method || 'dinheiro' });
   res.json({ id: r.lastInsertRowid, total, delivery_fee: deliveryFee });
 });
 

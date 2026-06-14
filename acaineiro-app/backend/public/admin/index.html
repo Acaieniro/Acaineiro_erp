@@ -891,6 +891,7 @@
 
     let refreshTimer = null;
     let lastMaxOrderId = 0;
+    let alertedOrderIds = new Set();
 
     function startRefresh() { stopRefresh(); refreshTimer = setInterval(loadOrders, 5000); }
     function stopRefresh() { if (refreshTimer) { clearInterval(refreshTimer); refreshTimer = null; } }
@@ -904,8 +905,11 @@
         });
         socket.on('new-order', (data) => {
           toast(`🆕 Novo pedido #${data.id} - ${data.customer_name} - R$ ${data.total.toFixed(2)}`);
-          playSound();
-          flashAttention(data.id);
+          if (!alertedOrderIds.has(data.id)) {
+            alertedOrderIds.add(data.id);
+            const isPix = data.payment_method === 'pix';
+            flashAttention(data.id, isPix ? 2 : null);
+          }
           loadOrders(() => {
             const card = document.querySelector(`.order-card[data-order-id="${data.id}"]`);
             if (card) card.classList.add('flash-new');
@@ -934,7 +938,7 @@
     let flashSoundInterval = null;
     let lastNewOrderId = null;
 
-    function flashAttention(orderId) {
+    function flashAttention(orderId, maxSounds) {
       lastNewOrderId = orderId;
 
       if (flashTimer) clearInterval(flashTimer);
@@ -960,8 +964,19 @@
         }
       }, 1200);
 
-      // Sound every 3 seconds
-      flashSoundInterval = setInterval(playSound, 3000);
+      // Sound
+      if (maxSounds) {
+        let count = 0;
+        const playLimited = () => {
+          if (count < maxSounds) { playSound(); count++; }
+          else { clearInterval(flashSoundInterval); flashSoundInterval = null; }
+        };
+        playLimited();
+        flashSoundInterval = setInterval(playLimited, 3000);
+      } else {
+        playSound();
+        flashSoundInterval = setInterval(playSound, 3000);
+      }
 
       // Store intervals for cleanup
       window._flashCardInterval = flashCardInterval;
@@ -976,6 +991,7 @@
       if (window._flashCardInterval) { clearInterval(window._flashCardInterval); window._flashCardInterval = null; }
       const card = document.querySelector(`.order-card[data-order-id="${lastNewOrderId}"]`);
       if (card) card.classList.remove('flash-new');
+      if (lastNewOrderId) alertedOrderIds.delete(lastNewOrderId);
       lastNewOrderId = null;
     }
 
@@ -1091,10 +1107,11 @@
         if (lastMaxOrderId > 0 && maxId > lastMaxOrderId) {
           const latest = newOrders.filter(o => o.id > lastMaxOrderId);
           for (const o of latest) {
-            if (o.status === 'novo') {
+            if (o.status === 'novo' && !alertedOrderIds.has(o.id)) {
+              alertedOrderIds.add(o.id);
               toast(`🆕 Novo pedido #${o.id} - ${o.customer_name} - R$ ${parseFloat(o.total).toFixed(2)}`);
-              playSound();
-              flashAttention(o.id);
+              const isPix = o.payment_method === 'pix';
+              flashAttention(o.id, isPix ? 2 : null);
             }
           }
         }
