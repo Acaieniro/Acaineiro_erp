@@ -2,7 +2,7 @@
   base = "acaineiro-app"
   publish = "www"
   functions = "netlify/functions"
-  command = "cd backend && npm ci --omit=dev"
+  command = "cd backend && npm ci --omit=dev && cd ../netlify/functions && npm install"
 
 [[redirects]]
   from = "/api/*"
