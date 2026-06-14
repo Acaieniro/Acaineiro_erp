@@ -1,6 +1,6 @@
 [build]
   base = "acaineiro-app"
-  publish = "www"
+  publish = "backend/public"
   functions = "netlify/functions"
   command = "npm ci --omit=dev"
 
@@ -10,23 +10,13 @@
   status = 200
 
 [[redirects]]
-  from = "/app"
-  to = "/.netlify/functions/api/app"
-  status = 200
-
-[[redirects]]
-  from = "/app/*"
-  to = "/.netlify/functions/api/app/:splat"
+  from = "/admin/*"
+  to = "/.netlify/functions/api/admin/:splat"
   status = 200
 
 [[redirects]]
   from = "/admin"
   to = "/.netlify/functions/api/admin"
-  status = 200
-
-[[redirects]]
-  from = "/admin/*"
-  to = "/.netlify/functions/api/admin/:splat"
   status = 200
 
 [[redirects]]
@@ -37,19 +27,4 @@
 [[redirects]]
   from = "/orders-count"
   to = "/.netlify/functions/api/orders-count"
-  status = 200
-
-[[redirects]]
-  from = "/login"
-  to = "/.netlify/functions/api/login"
-  status = 200
-
-[[redirects]]
-  from = "/flash-status"
-  to = "/.netlify/functions/api/flash-status"
-  status = 200
-
-[[redirects]]
-  from = "/"
-  to = "/index.html"
   status = 200
