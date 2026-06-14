@@ -889,37 +889,37 @@
     }
 
     let refreshTimer = null;
+    let lastMaxOrderId = 0;
 
     function startRefresh() { stopRefresh(); refreshTimer = setInterval(loadOrders, 5000); }
     function stopRefresh() { if (refreshTimer) { clearInterval(refreshTimer); refreshTimer = null; } }
 
     function initSocket() {
       if (socket) socket.disconnect();
-      socket = io({ reconnection: true, reconnectionDelay: 1000, reconnectionAttempts: Infinity });
-      socket.on('connect', () => {
-        socket.emit('join-admin');
-      });
-      socket.on('new-order', (data) => {
-        toast(`🆕 Novo pedido #${data.id} - ${data.customer_name} - R$ ${data.total.toFixed(2)}`);
-        playSound();
-        flashAttention(data.id);
-        loadOrders(() => {
-          const card = document.querySelector(`.order-card[data-order-id="${data.id}"]`);
-          if (card) {
-            card.classList.add('flash-new');
-          }
-          setTimeout(() => printReceipt(data.id), 500);
+      try {
+        socket = io({ reconnection: true, reconnectionDelay: 1000, reconnectionAttempts: 3 });
+        socket.on('connect', () => {
+          socket.emit('join-admin');
         });
-      });
-      socket.on('order-status', (order) => {
-        loadOrders();
-        if (order && lastNewOrderId === order.id && ['cancelado','finalizado','entregue','preparando'].includes(order.status)) {
-          clearFlash();
-        }
-      });
-      socket.on('payment-confirmed-admin', () => { clearFlash(); });
-      socket.on('disconnect', () => {});
-    }
+        socket.on('new-order', (data) => {
+          toast(`🆕 Novo pedido #${data.id} - ${data.customer_name} - R$ ${data.total.toFixed(2)}`);
+          playSound();
+          flashAttention(data.id);
+          loadOrders(() => {
+            const card = document.querySelector(`.order-card[data-order-id="${data.id}"]`);
+            if (card) card.classList.add('flash-new');
+            setTimeout(() => printReceipt(data.id), 500);
+          });
+        });
+        socket.on('order-status', (order) => {
+          loadOrders();
+          if (order && lastNewOrderId === order.id && ['cancelado','finalizado','entregue','preparando'].includes(order.status)) {
+            clearFlash();
+          }
+        });
+        socket.on('payment-confirmed-admin', () => { clearFlash(); });
+        socket.on('disconnect', () => {});
+      } catch (e) {}
 
     function playSound() {
       try {
@@ -1082,8 +1082,25 @@
 
     async function loadOrders(callback) {
       try {
-        orders = await api('/api/orders');
+        const newOrders = await api('/api/orders');
         const counts = await api('/orders-count');
+
+        // Detect new orders via polling (fallback when Socket.io unavailable)
+        const maxId = newOrders.reduce((m, o) => o.id > m ? o.id : m, 0);
+        if (lastMaxOrderId > 0 && maxId > lastMaxOrderId) {
+          const latest = newOrders.filter(o => o.id > lastMaxOrderId);
+          for (const o of latest) {
+            if (o.status === 'novo') {
+              toast(`🆕 Novo pedido #${o.id} - ${o.customer_name} - R$ ${parseFloat(o.total).toFixed(2)}`);
+              playSound();
+              flashAttention(o.id);
+              setTimeout(() => printReceipt(o.id), 500);
+            }
+          }
+        }
+        lastMaxOrderId = maxId;
+
+        orders = newOrders;
         document.getElementById('order-badge').textContent = counts.novos;
         document.getElementById('order-badge').classList.toggle('hidden', counts.novos === 0);
 

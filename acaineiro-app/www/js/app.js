@@ -27,33 +27,79 @@ const API = {
 
 function connectSocket(orderId) {
   if (socket && socket.connected) socket.disconnect();
-  socket = io(API_URL);
-  socket.on('connect', () => {
-    if (orderId) socket.emit('join-order', orderId);
-  });
-  socket.on('status-update', (order) => {
-    if (order.id === currentTrackingId) {
-      updateTrackingUI(order);
-    }
-    updateSavedOrder(order);
-    if (order.status === 'cancelado') {
-      if (paymentInterval) { clearInterval(paymentInterval); paymentInterval = null; }
-      if (pixTimerInterval) { clearInterval(pixTimerInterval); pixTimerInterval = null; }
-      showToast(`❌ Pedido #${order.id} foi cancelado`);
-      sendNotification('Pedido Cancelado ❌', `Pedido #${order.id} foi cancelado`);
-    } else if (order.status !== 'novo') {
-      const label = statusLabels[order.status] || order.status;
-      showToast(`${label} — Pedido #${order.id}`);
-      sendNotification(`Pedido #${order.id}`, `${label}`, 'logo/logo.png');
-    }
-    if (document.getElementById('page-payment').classList.contains('active') && order.status === 'cancelado') {
-      openTracking(order.id);
-    }
-    if (document.getElementById('page-orders').classList.contains('active')) {
-      loadMyOrders();
-    }
-  });
+  let pollTimer = null;
+
+  function startPolling() {
+    if (pollTimer) clearInterval(pollTimer);
+    pollTimer = setInterval(async () => {
+      try {
+        const r = await fetch(`${API_URL}/api/orders/${currentTrackingId}`);
+        if (!r.ok) return;
+        const order = await r.json();
+        if (order.id === currentTrackingId) {
+          updateTrackingUI(order);
+        }
+        updateSavedOrder(order);
+        if (order.status === 'cancelado') {
+          if (paymentInterval) { clearInterval(paymentInterval); paymentInterval = null; }
+          if (pixTimerInterval) { clearInterval(pixTimerInterval); pixTimerInterval = null; }
+          showToast(`❌ Pedido #${order.id} foi cancelado`);
+          sendNotification('Pedido Cancelado ❌', `Pedido #${order.id} foi cancelado`);
+          clearInterval(pollTimer);
+        } else if (order.status !== 'novo' && order.status !== currentTrackingStatus) {
+          currentTrackingStatus = order.status;
+          const label = statusLabels[order.status] || order.status;
+          showToast(`${label} — Pedido #${order.id}`);
+          sendNotification(`Pedido #${order.id}`, `${label}`, 'logo/logo.png');
+        }
+        if (document.getElementById('page-payment').classList.contains('active') && order.status === 'cancelado') {
+          openTracking(order.id);
+        }
+        if (document.getElementById('page-orders').classList.contains('active')) {
+          loadMyOrders();
+        }
+        if (['finalizado','cancelado','entregue'].includes(order.status)) {
+          clearInterval(pollTimer);
+        }
+      } catch (e) {}
+    }, 3000);
+  }
+
+  try {
+    socket = io(API_URL, { reconnection: true, reconnectionDelay: 1000, reconnectionAttempts: 3 });
+    socket.on('connect', () => {
+      if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+      if (orderId) socket.emit('join-order', orderId);
+    });
+    socket.on('status-update', (order) => {
+      if (order.id === currentTrackingId) {
+        updateTrackingUI(order);
+      }
+      updateSavedOrder(order);
+      if (order.status === 'cancelado') {
+        if (paymentInterval) { clearInterval(paymentInterval); paymentInterval = null; }
+        if (pixTimerInterval) { clearInterval(pixTimerInterval); pixTimerInterval = null; }
+        showToast(`❌ Pedido #${order.id} foi cancelado`);
+        sendNotification('Pedido Cancelado ❌', `Pedido #${order.id} foi cancelado`);
+      } else if (order.status !== 'novo') {
+        const label = statusLabels[order.status] || order.status;
+        showToast(`${label} — Pedido #${order.id}`);
+        sendNotification(`Pedido #${order.id}`, `${label}`, 'logo/logo.png');
+      }
+      if (document.getElementById('page-payment').classList.contains('active') && order.status === 'cancelado') {
+        openTracking(order.id);
+      }
+      if (document.getElementById('page-orders').classList.contains('active')) {
+        loadMyOrders();
+      }
+    });
+    socket.on('connect_error', () => { startPolling(); });
+    socket.on('disconnect', () => { startPolling(); });
+    setTimeout(() => { if (!socket || !socket.connected) startPolling(); }, 3000);
+  } catch (e) { startPolling(); }
 }
+
+let currentTrackingStatus = '';
 
 function requestNotifyPermission() {
   if ('Notification' in window && Notification.permission === 'default') {
