@@ -2,7 +2,7 @@
   base = "acaineiro-app"
   publish = "backend/public"
   functions = "netlify/functions"
-  command = "npm ci --omit=dev"
+  command = "npm ci --omit=dev && (if exist www (xcopy /E /I /Y www backend\\public\\app) else echo www not found)"
 
 [[redirects]]
   from = "/api/*"
@@ -26,12 +26,7 @@
 
 [[redirects]]
   from = "/app/*"
-  to = "/.netlify/functions/api/app/:splat"
-  status = 200
-
-[[redirects]]
-  from = "/app"
-  to = "/.netlify/functions/api/app"
+  to = "/app/index.html"
   status = 200
 
 [[redirects]]
