@@ -1416,13 +1416,13 @@ async function confirmDelivery() {
     const r = await fetch(`${API_URL}/api/orders/${currentTrackingId}/confirm`, { method: 'PUT' });
     const data = await r.json();
     document.getElementById('btn-confirm-delivery').classList.add('hidden');
+    updateTrackingUI(data);
     const saved = JSON.parse(localStorage.getItem('acaineiro_orders') || '[]');
     const idx = saved.findIndex(o => o.id === currentTrackingId);
     if (idx >= 0) {
-      saved[idx].status = 'finalizado';
+      saved[idx] = { ...saved[idx], ...data };
       localStorage.setItem('acaineiro_orders', JSON.stringify(saved));
     }
-    // Show loyalty reward if earned
     if (data.loyaltyReward) {
       const rewardLabel = data.loyaltyReward.type === 'percent' ? `${data.loyaltyReward.value}% de desconto` : `R$ ${parseFloat(data.loyaltyReward.value).toFixed(2).replace('.',',')}`;
       localStorage.setItem('acaineiro_last_reward', JSON.stringify(data.loyaltyReward));
