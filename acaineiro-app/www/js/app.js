@@ -271,6 +271,8 @@ function renderBanners(banners) {
   initBanners();
 }
 
+let bannerListenersAttached = false;
+
 function initBanners() {
   const track = document.getElementById('banner-track');
   const dots = document.querySelectorAll('.banner-dot');
@@ -280,14 +282,16 @@ function initBanners() {
   startBannerAuto();
 
   dots.forEach(dot => {
-    dot.addEventListener('click', () => {
+    dot.onclick = () => {
       const idx = parseInt(dot.dataset.slide);
       goToSlide(idx);
       resetBannerAuto();
-    });
+    };
   });
 
-  // Touch swipe
+  if (bannerListenersAttached) return;
+  bannerListenersAttached = true;
+
   let sx = 0, sd = 0, dragging = false;
   const onStart = (x) => { sx = x; sd = 0; dragging = true; track.classList.add('dragging'); resetBannerAuto(); };
   const onMove = (x) => { if (!dragging) return; sd = sx - x; track.style.transform = `translateX(calc(-${bannerCurrent * 100}% - ${sd}px))`; };
@@ -301,9 +305,9 @@ function initBanners() {
     setTimeout(() => track.style.transition = 'transform 0.5s var(--ease)', 300);
     resetBannerAuto();
   };
-  track.addEventListener('touchstart', (e) => onStart(e.touches[0].clientX), { passive: true });
-  track.addEventListener('touchmove', (e) => onMove(e.touches[0].clientX), { passive: true });
-  track.addEventListener('touchend', onEnd, { passive: true });
+  track.addEventListener('touchstart', (e) => onStart(e.changedTouches[0].clientX));
+  track.addEventListener('touchmove', (e) => { e.preventDefault(); onMove(e.changedTouches[0].clientX); }, { passive: false });
+  track.addEventListener('touchend', (e) => onEnd());
   track.addEventListener('mousedown', (e) => onStart(e.clientX));
   track.addEventListener('mousemove', (e) => { if (dragging) onMove(e.clientX); });
   track.addEventListener('mouseup', onEnd);

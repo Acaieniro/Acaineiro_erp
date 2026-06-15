@@ -714,10 +714,10 @@ header {
 .banner-track {
   display: flex;
   transition: transform 0.5s var(--ease);
-  touch-action: pan-y;
   cursor: grab;
   user-select: none;
   -webkit-user-select: none;
+  will-change: transform;
 }
 .banner-track:active { cursor: grabbing; }
 .banner-track.dragging { transition: none !important; }
