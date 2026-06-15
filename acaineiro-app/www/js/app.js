@@ -27,6 +27,7 @@ const API = {
 
 function connectSocket(orderId) {
   if (socket && socket.connected) socket.disconnect();
+  if (orderId) currentTrackingId = orderId;
   let pollTimer = null;
 
   function startPolling() {
