@@ -1,5 +1,9 @@
 {
   "appId": "com.acaineiro.app",
   "appName": "Açaineiro",
-  "webDir": "www"
+  "webDir": "www",
+  "server": {
+    "url": "https://sistema-acaineiro.netlify.app/app",
+    "allowNavigation": ["sistema-acaineiro.netlify.app"]
+  }
 }
