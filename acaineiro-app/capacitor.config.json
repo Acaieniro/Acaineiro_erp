@@ -3,7 +3,7 @@
   "appName": "Açaineiro",
   "webDir": "www",
   "server": {
-    "url": "https://sistema-acaineiro.netlify.app/app",
-    "allowNavigation": ["sistema-acaineiro.netlify.app"]
+    "url": "https://sistemaacaineiro.netlify.app/app",
+    "allowNavigation": ["sistemaacaineiro.netlify.app"]
   }
 }
