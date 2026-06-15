@@ -907,8 +907,7 @@
           toast(`🆕 Novo pedido #${data.id} - ${data.customer_name} - R$ ${data.total.toFixed(2)}`);
           if (!alertedOrderIds.has(data.id)) {
             alertedOrderIds.add(data.id);
-            const isPix = data.payment_method === 'pix';
-            flashAttention(data.id, isPix ? 2 : null);
+            flashAttention(data.id);
           }
           loadOrders(() => {
             const card = document.querySelector(`.order-card[data-order-id="${data.id}"]`);
@@ -938,24 +937,21 @@
     let flashSoundInterval = null;
     let lastNewOrderId = null;
 
-    function flashAttention(orderId, maxSounds) {
+    function flashAttention(orderId) {
       lastNewOrderId = orderId;
 
       if (flashTimer) clearInterval(flashTimer);
       if (flashSoundInterval) clearInterval(flashSoundInterval);
 
-      // Page title flashing
       let titleToggle = false;
       flashTimer = setInterval(() => {
         titleToggle = !titleToggle;
         document.title = titleToggle ? '🆕 NOVO PEDIDO! - Açaineiro' : '▣ ▣ ▣ NOVO PEDIDO! ▣ ▣ ▣';
       }, 700);
 
-      // Nav link flashing
       const navLink = document.querySelector('nav a[data-page="dashboard"]');
       if (navLink) navLink.classList.add('flash-nav');
 
-      // Flash the order card if visible, repeating
       const flashCardInterval = setInterval(() => {
         const card = document.querySelector(`.order-card[data-order-id="${orderId}"]`);
         if (card) {
@@ -964,23 +960,17 @@
         }
       }, 1200);
 
-      // Sound
-      if (maxSounds) {
-        let count = 0;
-        const playLimited = () => {
-          if (count < maxSounds) { playSound(); count++; }
-          else { clearInterval(flashSoundInterval); flashSoundInterval = null; }
-        };
-        playLimited();
-        flashSoundInterval = setInterval(playLimited, 3000);
-      } else {
-        playSound();
-        flashSoundInterval = setInterval(playSound, 3000);
-      }
+      playSound();
+      flashSoundInterval = setInterval(playSound, 3000);
 
-      // Store intervals for cleanup
       window._flashCardInterval = flashCardInterval;
     }
+
+    function stopSound() {
+      if (flashSoundInterval) { clearInterval(flashSoundInterval); flashSoundInterval = null; }
+    }
+
+    document.addEventListener('click', stopSound);
 
     function clearFlash() {
       document.title = 'Açaineiro - Admin';
@@ -1110,8 +1100,7 @@
             if (o.status === 'novo' && !alertedOrderIds.has(o.id)) {
               alertedOrderIds.add(o.id);
               toast(`🆕 Novo pedido #${o.id} - ${o.customer_name} - R$ ${parseFloat(o.total).toFixed(2)}`);
-              const isPix = o.payment_method === 'pix';
-              flashAttention(o.id, isPix ? 2 : null);
+              flashAttention(o.id);
             }
           }
         }
