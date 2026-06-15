@@ -63,7 +63,7 @@ function connectSocket(orderId) {
           clearInterval(pollTimer);
         }
       } catch (e) {}
-    }, 3000);
+    }, 2000);
   }
 
   try {
@@ -1505,7 +1505,10 @@ async function refreshSettings() {
   try { settings = await API.get('/api/settings'); } catch (e) {}
 }
 
+let currentPage = 'home';
+
 function navigateTo(page) {
+  currentPage = page;
   if (paymentInterval) { clearInterval(paymentInterval); paymentInterval = null; }
   if (pixTimerInterval) { clearInterval(pixTimerInterval); pixTimerInterval = null; }
 
@@ -1551,6 +1554,8 @@ function navigateTo(page) {
   if (page === 'account') {
     setTimeout(renderLoyalty, 300);
   }
+
+  if (page === 'home') { startHomeAutoRefresh(); } else { stopHomeAutoRefresh(); }
 
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -1795,11 +1800,55 @@ function logoutUser() {
 }
 
 
+let homeRefreshTimer = null;
+
+function startHomeAutoRefresh() {
+  stopHomeAutoRefresh();
+  homeRefreshTimer = setInterval(async () => {
+    if (currentPage !== 'home') return;
+    try {
+      settings = await API.get('/api/settings');
+      allProducts = await API.get('/api/products');
+      const banners = await API.get('/api/banners');
+      renderBanners(banners);
+      await refreshProducts();
+      renderFeatured();
+      renderTopProducts();
+      renderCombos();
+      renderFlashProducts();
+      renderLoyalty();
+      renderCupomDoDia();
+    } catch (e) {}
+  }, 30000);
+}
+
+function stopHomeAutoRefresh() {
+  if (homeRefreshTimer) { clearInterval(homeRefreshTimer); homeRefreshTimer = null; }
+}
+
+function refreshAllData() {
+  if (currentTrackingId) connectSocket(currentTrackingId);
+  if (currentPage === 'home') {
+    loadBanners();
+    refreshProducts().then(() => {
+      renderFeatured();
+      renderTopProducts();
+      renderCombos();
+      renderFlashProducts();
+      renderLoyalty();
+      renderCupomDoDia();
+    });
+  }
+  if (currentPage === 'menu') refreshProducts();
+  if (currentPage === 'cart' || currentPage === 'account' || currentPage === 'checkout') refreshSettings();
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   loadApp();
   loadAccount();
   const saved = JSON.parse(localStorage.getItem('acaineiro_orders') || '[]');
   if (saved.length > 0) connectSocket();
+  startHomeAutoRefresh();
 
   // Check if returning from MP payment
   const params = new URLSearchParams(window.location.search);
@@ -1807,4 +1856,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const orderId = params.get('order');
     if (orderId) openTracking(parseInt(orderId));
   }
+
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    stopHomeAutoRefresh();
+  } else {
+    startHomeAutoRefresh();
+    refreshAllData();
+  }
+});
 });

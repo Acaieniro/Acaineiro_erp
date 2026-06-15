@@ -893,8 +893,9 @@
     let lastMaxOrderId = 0;
     let alertedOrderIds = new Set();
 
-    function startRefresh() { stopRefresh(); refreshTimer = setInterval(loadOrders, 5000); }
+    function startRefresh() { stopRefresh(); refreshTimer = setInterval(loadOrders, 2000); }
     function stopRefresh() { if (refreshTimer) { clearInterval(refreshTimer); refreshTimer = null; } }
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) { loadOrders(); startRefresh(); } else { stopRefresh(); } });
 
     function initSocket() {
       if (socket) socket.disconnect();
