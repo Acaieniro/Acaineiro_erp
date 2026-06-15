@@ -248,14 +248,11 @@ function renderBanners(banners) {
     const subtitle = b.subtitle || '';
     const btnText = b.button_text || '';
     const action = b.button_action || 'menu';
-    const emoji = b.emoji || '🖼️';
-    const icon = b.icon_url ? `<img src="${b.icon_url}" class="banner-icon-img" alt="">` : `<span class="banner-emoji">${emoji}</span>`;
     const bg = b.image_url ? `url('${b.image_url}') center/cover no-repeat, ${b.bg_color || '#7C3AED'}` : `linear-gradient(135deg, ${b.bg_color || '#7C3AED'}, color-mix(in srgb, ${b.bg_color || '#7C3AED'}, #000 30%))`;
 
     return `
       <div class="banner-slide" style="background: ${bg};">
         <div class="banner-content">
-          ${icon}
           <h2 class="banner-title">${title}</h2>
           <p class="banner-subtitle">${subtitle}</p>
           ${btnText ? `<button class="banner-btn" onclick="navigateTo('${action}')">${btnText}</button>` : ''}
