@@ -25,6 +25,16 @@
   status = 200
 
 [[redirects]]
+  from = "/app/*"
+  to = "/.netlify/functions/api/app/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/app"
+  to = "/.netlify/functions/api/app"
+  status = 200
+
+[[redirects]]
   from = "/"
   to = "/admin"
   status = 301
