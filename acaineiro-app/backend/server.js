@@ -207,7 +207,8 @@ async function initDB() {
     "ALTER TABLE orders ADD COLUMN payment_data_json TEXT",
     "ALTER TABLE orders ADD COLUMN order_type TEXT DEFAULT 'delivery'",
     "ALTER TABLE loyalty_rewards ADD COLUMN reward_product_id INTEGER DEFAULT 0",
-    "ALTER TABLE loyalty_rewards ADD COLUMN redeemed_at TEXT"
+    "ALTER TABLE loyalty_rewards ADD COLUMN redeemed_at TEXT",
+    "ALTER TABLE orders ADD COLUMN ps_charge_id TEXT"
   ]) {
     try { await db.run(sql); } catch (e) {}
   }
@@ -249,9 +250,8 @@ async function initDB() {
     await db.run('INSERT INTO settings (key,value) VALUES (?,?)', 'store_address', 'R. Venezuela, 68 - Contagem, MG');
     await db.run('INSERT INTO settings (key,value) VALUES (?,?)', 'store_name', 'AÇAINEIRO');
     await db.run('INSERT INTO settings (key,value) VALUES (?,?)', 'pix_key', '');
-    await db.run('INSERT INTO settings (key,value) VALUES (?,?)', 'mp_access_token', '');
-    await db.run('INSERT INTO settings (key,value) VALUES (?,?)', 'mp_public_key', '');
-    await db.run('INSERT INTO settings (key,value) VALUES (?,?)', 'asaas_api_key', '');
+    await db.run('INSERT INTO settings (key,value) VALUES (?,?)', 'pagseguro_email', '');
+    await db.run('INSERT INTO settings (key,value) VALUES (?,?)', 'pagseguro_token', '');
   }
 
   defaults: {
@@ -760,83 +760,38 @@ app.post('/api/orders/:id/cancel-customer', async (req, res) => {
   res.json(updated);
 });
 
-// ─── MERCADO PAGO ───
-const MP_API = 'https://api.mercadopago.com/v1';
-function mpIdempotencyKey() { return `${Date.now()}-${Math.random().toString(36).slice(2,10)}`; }
+// ─── PAGSEGURO ───
+const PS_API = 'https://api.pagseguro.com';
 
-async function mpFetch(path, opts = {}) {
+async function psFetch(path, opts = {}) {
   const s = await getSettings();
-  if (!s.mp_access_token) throw new Error('MP não configurado');
-  const r = await fetch(`${MP_API}${path}`, {
+  if (!s.pagseguro_email || !s.pagseguro_token) throw new Error('PagSeguro não configurado');
+  const r = await fetch(`${PS_API}${path}`, {
     ...opts,
-    headers: { 'Content-Type':'application/json', 'Authorization':`Bearer ${s.mp_access_token}`, 'X-Idempotency-Key': mpIdempotencyKey(), ...opts.headers }
+    headers: { 'Content-Type':'application/json', 'x-email': s.pagseguro_email, 'x-token': s.pagseguro_token, ...opts.headers }
   });
   const d = await r.json();
-  if (!r.ok) throw new Error(d.message || 'Erro MP');
+  if (!r.ok) throw new Error(d.error_messages?.[0]?.description || d.message || 'Erro PagSeguro');
   return d;
 }
 
-async function getOrCreateCustomer(userId) {
-  const user = await db.get('SELECT * FROM users WHERE id=?', userId);
-  if (!user) throw new Error('Usuário não encontrado');
-  if (user.mp_customer_id) return user.mp_customer_id;
-  const s = await getSettings();
-  const ts = Date.now();
-  const r = await fetch('https://api.mercadopago.com/v1/customers', {
-    method:'POST', headers:{'Content-Type':'application/json', 'Authorization':`Bearer ${s.mp_access_token}`},
-    body: JSON.stringify({ email: `user_${userId}_${ts}@acaineiro.local` })
-  });
-  const d = await r.json();
-  if (!r.ok) {
-    if (d.cause?.[0]?.description === 'the customer already exist') {
-      const r2 = await fetch('https://api.mercadopago.com/v1/customers', {
-        method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${s.mp_access_token}`},
-        body: JSON.stringify({ email: `user_${userId}_${ts}_${Math.random().toString(36).slice(2,6)}@acaineiro.local` })
-      });
-      const d2 = await r2.json();
-      if (!r2.ok) throw new Error(d2.message || 'Erro ao criar customer');
-      await db.run('UPDATE users SET mp_customer_id=? WHERE id=?', d2.id, userId);
-      return d2.id;
-    }
-    throw new Error(d.message || 'Erro ao criar customer');
-  }
-  await db.run('UPDATE users SET mp_customer_id=? WHERE id=?', d.id, userId);
-  return d.id;
-}
-
-async function associateMpCard(customerId, cardToken) {
-  const s = await getSettings();
-  const r = await fetch(`https://api.mercadopago.com/v1/customers/${customerId}/cards`, {
-    method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${s.mp_access_token}`},
-    body: JSON.stringify({ token: cardToken })
-  });
-  const d = await r.json();
-  if (!r.ok) throw new Error(d.message || 'Erro ao associar cartão');
-  return d;
-}
-
-async function deleteMpCard(customerId, cardId) {
-  const s = await getSettings();
-  await fetch(`https://api.mercadopago.com/v1/customers/${customerId}/cards/${cardId}`, {
-    method:'DELETE', headers:{'Authorization':`Bearer ${s.mp_access_token}`}
-  });
-}
-
-// Pix payment
+// Pix payment via PagSeguro
 app.post('/api/orders/:id/pay', async (req, res) => {
   const order = await db.get('SELECT * FROM orders WHERE id=?', req.params.id);
   if (!order) return res.status(404).json({ error: 'Pedido não encontrado' });
   try {
     if (order.payment_method === 'pix') {
-      const payment = await mpFetch('/payments', { method:'POST', body: JSON.stringify({
-        transaction_amount: order.total,
+      const charge = await psFetch('/charges', { method:'POST', body: JSON.stringify({
+        reference_id: `pedido${order.id}`,
         description: `Pedido #${order.id} - ${order.customer_name}`,
-        payment_method_id: 'pix',
-        payer: { email: `pedido${order.id}@acaineiro.com` }
+        amount: { value: Math.round(order.total * 100), currency: 'BRL' },
+        payment_method: { type: 'PIX', pix: { expiration: 3600 } }
       })});
-      const data = payment.point_of_interaction.transaction_data;
-      await db.run('UPDATE orders SET mp_payment_id=?, payment_data_json=? WHERE id=?', String(payment.id), JSON.stringify(data), order.id);
-      res.json({ method:'pix', qr_code: data.qr_code, qr_code_base64: data.qr_code_base64, ticket_url: data.ticket_url, mp_payment_id: payment.id });
+      const pix = charge.payment_method.pix;
+      const qrCode = pix.qr_codes?.[0] || {};
+      const data = { qr_code: qrCode.text, qr_code_base64: qrCode.image, charge_id: charge.id };
+      await db.run('UPDATE orders SET ps_charge_id=?, payment_data_json=? WHERE id=?', charge.id, JSON.stringify(data), order.id);
+      res.json({ method:'pix', qr_code: qrCode.text, qr_code_base64: qrCode.image, charge_id: charge.id });
     } else {
       res.status(400).json({ error: 'Método de pagamento não suportado' });
     }
@@ -845,10 +800,11 @@ app.post('/api/orders/:id/pay', async (req, res) => {
 
 app.get('/api/orders/:id/payment-status', async (req, res) => {
   const order = await db.get('SELECT * FROM orders WHERE id=?', req.params.id);
-  if (!order || !order.mp_payment_id) return res.json({ status:'pending' });
+  if (!order || !order.ps_charge_id) return res.json({ status:'pending' });
   try {
-    const p = await mpFetch(`/payments/${order.mp_payment_id}`);
-    res.json({ status: p.status, status_detail: p.status_detail });
+    const c = await psFetch(`/charges/${order.ps_charge_id}`);
+    const statusMap = { 'PAID': 'approved', 'PENDING': 'pending', 'CANCELED': 'cancelled', 'DECLINED': 'rejected' };
+    res.json({ status: statusMap[c.status] || 'pending', status_detail: c.status });
   } catch (e) { res.json({ status:'pending' }); }
 });
 
@@ -881,33 +837,33 @@ app.post('/api/orders/:id/confirm-payment', async (req, res) => {
 app.post('/api/orders/:id/refund', adminAuth, async (req, res) => {
   const order = await db.get('SELECT * FROM orders WHERE id=?', req.params.id);
   if (!order) return res.status(404).json({ error: 'Pedido não encontrado' });
-  if (!order.mp_payment_id) return res.status(400).json({ error: 'Nenhum pagamento MP para reembolsar' });
+  if (!order.ps_charge_id) return res.status(400).json({ error: 'Nenhuma cobranca PagSeguro para reembolsar' });
   try {
-    const refund = await mpFetch(`/payments/${order.mp_payment_id}/refunds`, { method:'POST' });
+    await psFetch(`/charges/${order.ps_charge_id}/cancel`, { method:'POST' });
     await db.run("UPDATE orders SET payment_status='reembolsado' WHERE id=?", req.params.id);
     const updated = await db.get('SELECT * FROM orders WHERE id=?', req.params.id);
     if (updated) { updated.items = JSON.parse(updated.items_json); if (io) io.to(`order-${updated.id}`).emit('payment-refunded', updated); }
     if (io) io.to('admin').emit('order-status', updated);
-    res.json({ ok: true, refund_id: refund.id });
+    res.json({ ok: true });
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
 app.post('/api/orders/:id/cancel-with-refund', adminAuth, async (req, res) => {
   const order = await db.get('SELECT * FROM orders WHERE id=?', req.params.id);
-  if (!order) return res.status(404).json({ error: 'Pedido não encontrado' });
-  if (order.status === 'cancelado') return res.status(400).json({ error: 'Já cancelado' });
+  if (!order) return res.status(404).json({ error: 'Pedido n�o encontrado' });
+  if (order.status === 'cancelado') return res.status(400).json({ error: 'J� cancelado' });
 
   let needsRefund = false;
-  if (order.mp_payment_id) {
+  if (order.ps_charge_id) {
     try {
-      const mp = await mpFetch(`/payments/${order.mp_payment_id}`);
-      if (mp.status === 'approved') needsRefund = true;
+      const c = await psFetch(`/charges/${order.ps_charge_id}`);
+      if (c.status === 'PAID') needsRefund = true;
     } catch (e) {}
   }
 
   if (needsRefund) {
     try {
-      await mpFetch(`/payments/${order.mp_payment_id}/refunds`, { method:'POST' });
+      await psFetch(`/charges/${order.ps_charge_id}/cancel`, { method:'POST' });
       await db.run("UPDATE orders SET status='cancelado', payment_status='reembolsado', updated_at=CURRENT_TIMESTAMP WHERE id=?", req.params.id);
     } catch (e) { return res.status(400).json({ error: 'Erro ao reembolsar: ' + e.message }); }
   } else {
@@ -918,6 +874,25 @@ app.post('/api/orders/:id/cancel-with-refund', adminAuth, async (req, res) => {
   if (updated) updated.items = JSON.parse(updated.items_json);
   if (io) { io.to('admin').emit('order-status', updated); io.to(`order-${updated.id}`).emit('status-update', updated); }
   res.json(updated);
+});
+
+// PagSeguro notification webhook
+app.post('/api/pagseguro/webhook', async (req, res) => {
+  try {
+    const { charge_id, status } = req.body;
+    if (!charge_id) return res.status(400).json({ error: 'charge_id obrigatorio' });
+    const order = await db.get('SELECT * FROM orders WHERE ps_charge_id=?', charge_id);
+    if (!order) return res.status(404).json({ error: 'Pedido n�o encontrado' });
+    if (status === 'PAID' && order.payment_status !== 'pago') {
+      await db.run("UPDATE orders SET payment_status='pago', status='preparando', updated_at=CURRENT_TIMESTAMP WHERE id=?", order.id);
+      const updated = await db.get('SELECT * FROM orders WHERE id=?', order.id);
+      if (updated) {
+        updated.items = JSON.parse(updated.items_json);
+        if (io) { io.to(`order-${updated.id}`).emit('payment-confirmed', updated); io.to(`order-${updated.id}`).emit('status-update', updated); io.to('admin').emit('order-status', updated); io.to('admin').emit('payment-confirmed-admin', { id: updated.id }); }
+      }
+    }
+    res.json({ ok: true });
+  } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
 // ─── CUSTOMERS ───
