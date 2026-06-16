@@ -20,8 +20,8 @@ class EscPosBuilder {
   text(t) { return this.add(Buffer.from(t, 'ascii')); }
 
   textBR(t) {
-    const latin1 = Buffer.from(t, 'latin1');
-    return this.add(latin1);
+    t = t.normalize('NFC');
+    return this.add(Buffer.from(t, 'latin1'));
   }
 
   line(t) { 
