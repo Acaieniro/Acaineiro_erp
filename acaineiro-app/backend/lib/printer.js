@@ -8,7 +8,7 @@ class EscPosBuilder {
     this.buffer = Buffer.from([]);
   }
 
-  init() { return this.add(Buffer.from([0x1B, 0x40])); }
+  init() { return this.add(Buffer.from([0x1B, 0x40, 0x1B, 0x74, 0x03])); } // ESC @ + ESC t 3 (PC860 Portuguese)
 
   align(n) { return this.add(Buffer.from([0x1B, 0x61, n])); }
 
