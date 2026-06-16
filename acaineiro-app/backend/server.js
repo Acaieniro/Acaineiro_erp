@@ -247,7 +247,7 @@ async function initDB() {
     await db.run('INSERT INTO settings (key,value) VALUES (?,?)', 'store_close', '20:30');
     await db.run('INSERT INTO settings (key,value) VALUES (?,?)', 'store_phone', '5531975785413');
     await db.run('INSERT INTO settings (key,value) VALUES (?,?)', 'store_address', 'R. Venezuela, 68 - Contagem, MG');
-    await db.run('INSERT INTO settings (key,value) VALUES (?,?)', 'store_name', 'Açaineiro');
+    await db.run('INSERT INTO settings (key,value) VALUES (?,?)', 'store_name', 'AÇAINEIRO');
     await db.run('INSERT INTO settings (key,value) VALUES (?,?)', 'pix_key', '');
     await db.run('INSERT INTO settings (key,value) VALUES (?,?)', 'mp_access_token', '');
     await db.run('INSERT INTO settings (key,value) VALUES (?,?)', 'mp_public_key', '');
