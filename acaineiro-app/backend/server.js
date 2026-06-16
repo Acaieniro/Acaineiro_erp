@@ -8,7 +8,7 @@ const multer = require('multer');
 const cloudinary = require('cloudinary').v2;
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
 
-const isNetlify = process.env.NETLIFY === 'true';
+const isNetlify = !!process.env.NETLIFY;
 let PrinterManager;
 if (!isNetlify) {
   PrinterManager = eval('require')('./lib/printer').PrinterManager;
