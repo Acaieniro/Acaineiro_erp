@@ -8,7 +8,11 @@ const multer = require('multer');
 const cloudinary = require('cloudinary').v2;
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
 
-const { PrinterManager } = require('./lib/printer');
+const isNetlify = process.env.NETLIFY === 'true';
+let PrinterManager;
+if (!isNetlify) {
+  PrinterManager = require('./lib/printer').PrinterManager;
+}
 
 require('dotenv').config();
 
@@ -19,7 +23,6 @@ cloudinary.config({
 });
 
 const app = express();
-const isNetlify = process.env.NETLIFY === 'true';
 
 let server, io;
 if (!isNetlify) {
