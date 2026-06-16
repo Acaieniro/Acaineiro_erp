@@ -31,7 +31,7 @@ if (!isNetlify) {
 }
 
 const PORT = process.env.PORT || 3000;
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'acaineiro@2026.';
 
 // ─── Database: Turso (Netlify) or SQLite (local) ───
 const useTurso = !!(process.env.TURSO_DATABASE_URL && process.env.TURSO_AUTH_TOKEN);
@@ -898,13 +898,9 @@ app.get('/api/customers', adminAuth, async (req, res) => {
 });
 
 // ─── AUTH ───
-app.post('/api/login', async (req, res) => {
+app.post('/api/login', (req, res) => {
   const { password } = req.body;
   if (password === ADMIN_PASSWORD) return res.json({ token: ADMIN_PASSWORD });
-  try {
-    const row = await db.get("SELECT value FROM settings WHERE key='admin_password'");
-    if (row && password === row.value) return res.json({ token: row.value });
-  } catch (_) {}
   res.status(401).json({ error: 'Senha incorreta' });
 });
 
