@@ -292,9 +292,16 @@ if (io) {
 }
 
 // Middleware
-const adminAuth = (req, res, next) => {
+const adminAuth = async (req, res, next) => {
   const pass = req.headers['x-admin-pass'];
-  if (pass !== ADMIN_PASSWORD) return res.status(401).json({ error: 'Não autorizado' });
+  const ok = pass === ADMIN_PASSWORD;
+  if (!ok) {
+    try {
+      const row = await db.get("SELECT value FROM settings WHERE key='admin_password'");
+      if (row && pass === row.value) return next();
+    } catch (_) {}
+    return res.status(401).json({ error: 'Não autorizado' });
+  }
   next();
 };
 
@@ -898,9 +905,14 @@ app.get('/api/customers', adminAuth, async (req, res) => {
 });
 
 // ─── AUTH ───
-app.post('/api/login', (req, res) => {
+app.post('/api/login', async (req, res) => {
   const { password } = req.body;
   if (password === ADMIN_PASSWORD) return res.json({ token: ADMIN_PASSWORD });
+  // Fallback: verificar no banco (settings)
+  try {
+    const row = await db.get("SELECT value FROM settings WHERE key='admin_password'");
+    if (row && password === row.value) return res.json({ token: row.value });
+  } catch (_) {}
   res.status(401).json({ error: 'Senha incorreta' });
 });
 
