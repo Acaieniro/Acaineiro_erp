@@ -20,7 +20,10 @@ class EscPosBuilder {
   text(t) { return this.add(Buffer.from(t, 'ascii')); }
 
   textBR(t) {
-    t = t.normalize('NFC');
+    t = t.normalize('NFC').replace(/[Çç]/g, 'C').replace(/[ÀÁÂÃÄàáâãä]/g, 'A')
+      .replace(/[ÈÉÊËèéêë]/g, 'E').replace(/[ÌÍÎÏìíîï]/g, 'I')
+      .replace(/[ÒÓÔÕÖòóôõö]/g, 'O').replace(/[ÙÚÛÜùúûü]/g, 'U')
+      .replace(/[Ññ]/g, 'N').replace(/[Ýýÿ]/g, 'Y');
     return this.add(Buffer.from(t, 'latin1'));
   }
 
