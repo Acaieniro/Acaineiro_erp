@@ -11,7 +11,7 @@ const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const isNetlify = process.env.NETLIFY === 'true';
 let PrinterManager;
 if (!isNetlify) {
-  PrinterManager = require('./lib/printer').PrinterManager;
+  PrinterManager = eval('require')('./lib/printer').PrinterManager;
 }
 
 require('dotenv').config();
@@ -72,10 +72,12 @@ app.use(express.static(PUBLIC, {
 
 const WWW_PATH = path.join(__dirname, '..', 'www');
 // ─── Printer ───
-const printerManager = new PrinterManager();
+let printerManager = null;
 
 async function initPrinter() {
+  if (isNetlify || !PrinterManager) return;
   try {
+    printerManager = new PrinterManager();
     const settings = await getSettings();
     await printerManager.init(settings);
   } catch (e) {
@@ -642,7 +644,7 @@ app.put('/api/orders/:id/status', adminAuth, async (req, res) => {
   if (status === 'preparando' && !isNetlify) {
     getSettings().then(s => {
       if (s.auto_print === '1' || s.auto_print === undefined) {
-        printerManager.printOrder(order, s).catch(e => console.log('[Printer] Auto-print error:', e.message));
+        printerManager?.printOrder(order, s).catch(e => console.log('[Printer] Auto-print error:', e.message));
       }
     }).catch(() => {});
   }
@@ -837,7 +839,7 @@ app.post('/api/orders/:id/confirm-payment', async (req, res) => {
     if (!isNetlify) {
       getSettings().then(s => {
         if (s.auto_print === '1' || s.auto_print === undefined) {
-          printerManager.printOrder(order, s).catch(e => console.log('[Printer] Pix auto-print error:', e.message));
+          printerManager?.printOrder(order, s).catch(e => console.log('[Printer] Pix auto-print error:', e.message));
         }
       }).catch(() => {});
     }
@@ -1084,8 +1086,8 @@ app.post('/api/print/:id', adminAuth, async (req, res) => {
     const order = await db.get('SELECT * FROM orders WHERE id=?', req.params.id);
     if (!order) return res.status(404).json({ error: 'Pedido não encontrado' });
     const settings = await getSettings();
-    const status = printerManager.getStatus();
-    if (!status.configured || status.mode === 'file') return res.status(400).json({ error: 'IMPRIMIR_NO_NAVEGADOR' });
+    const status = printerManager?.getStatus();
+    if (!status?.configured || status.mode === 'file') return res.status(400).json({ error: 'IMPRIMIR_NO_NAVEGADOR' });
     await printerManager.printOrder(order, settings);
     res.json({ ok: true });
   } catch (e) {
@@ -1096,8 +1098,8 @@ app.post('/api/print/:id', adminAuth, async (req, res) => {
 app.post('/api/print/test', adminAuth, async (req, res) => {
   try {
     if (isNetlify) return res.status(400).json({ error: 'IMPRIMIR_NO_NAVEGADOR' });
-    const status = printerManager.getStatus();
-    if (!status.configured || status.mode === 'file') return res.status(400).json({ error: 'IMPRIMIR_NO_NAVEGADOR' });
+    const status = printerManager?.getStatus();
+    if (!status?.configured || status.mode === 'file') return res.status(400).json({ error: 'IMPRIMIR_NO_NAVEGADOR' });
     await printerManager.printTest(await getSettings());
     res.json({ ok: true });
   } catch (e) {
@@ -1106,6 +1108,7 @@ app.post('/api/print/test', adminAuth, async (req, res) => {
 });
 
 app.get('/api/print/status', async (req, res) => {
+  if (isNetlify || !printerManager) return res.json({ configured: false, mode: 'none', error: 'Servidor local apenas' });
   res.json(printerManager.getStatus());
 });
 

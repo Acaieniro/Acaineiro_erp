@@ -227,7 +227,7 @@ class UsbPrinter {
   }
 
   async connect() {
-    const { usb } = require('usb');
+    const { usb } = eval('require')('usb');
     const dev = await usb.findDeviceByIds(this.vid, this.pid);
     if (!dev) throw new Error('Impressora USB não encontrada');
     this.device = dev;
