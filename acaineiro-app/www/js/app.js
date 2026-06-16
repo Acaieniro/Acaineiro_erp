@@ -1254,9 +1254,7 @@ async function submitOrder() {
   try {
     const paymentMethodDetail = payment.value === 'cartao' ? (document.querySelector('input[name="card_type"]:checked')?.value || '') : '';
     const r = await API.post('/api/orders', { customer: { name, phone, address, neighborhood }, items: cart.map(i => i.is_combo ? { id: i.id, name: i.name, description: i.description || '', price: i.price, qty: i.qty, icon: i.icon, is_combo: true, combo_items: i.items } : { id: i.id, name: i.name, description: i.description || '', price: i.price, qty: i.qty, icon: i.icon }), payment_method: payment.value, payment_method_detail: paymentMethodDetail, notes, amount_paid, change_due, coupon_code: couponCode });
-    if (window.activeCoupon && window.activeCoupon.id) {
-      fetch(`${API_URL}/api/coupons/${window.activeCoupon.id}/use`, { method: 'POST' }).catch(() => {});
-    }
+    // times_used é incrementado no backend ao criar o pedido
     if (couponCode && couponCode.startsWith('FIDEL-')) {
       localStorage.removeItem('acaineiro_last_reward');
     }
