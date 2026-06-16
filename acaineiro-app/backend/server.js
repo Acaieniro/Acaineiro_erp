@@ -250,8 +250,8 @@ async function initDB() {
     await db.run('INSERT INTO settings (key,value) VALUES (?,?)', 'store_address', 'R. Venezuela, 68 - Contagem, MG');
     await db.run('INSERT INTO settings (key,value) VALUES (?,?)', 'store_name', 'AÇAINEIRO');
     await db.run('INSERT INTO settings (key,value) VALUES (?,?)', 'pix_key', '');
-    await db.run('INSERT INTO settings (key,value) VALUES (?,?)', 'pagseguro_email', '');
-    await db.run('INSERT INTO settings (key,value) VALUES (?,?)', 'pagseguro_token', '');
+    await db.run('INSERT INTO settings (key,value) VALUES (?,?)', 'pagseguro_client_id', '');
+    await db.run('INSERT INTO settings (key,value) VALUES (?,?)', 'pagseguro_client_secret', '');
   }
 
   defaults: {
@@ -760,15 +760,30 @@ app.post('/api/orders/:id/cancel-customer', async (req, res) => {
   res.json(updated);
 });
 
-// ─── PAGSEGURO ───
+// ─── PAGSEGURO (PAGBANK) ───
 const PS_API = 'https://api.pagseguro.com';
+let psToken = null;
+
+async function psGetToken(s) {
+  if (!s.pagseguro_client_id || !s.pagseguro_client_secret) throw new Error('PagSeguro não configurado');
+  const r = await fetch(`${PS_API}/oauth2/token`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: `grant_type=client_credentials&client_id=${encodeURIComponent(s.pagseguro_client_id)}&client_secret=${encodeURIComponent(s.pagseguro_client_secret)}`
+  });
+  const d = await r.json();
+  if (!r.ok) throw new Error(d.error_description || d.error || 'Erro ao obter token PagSeguro');
+  psToken = d.access_token;
+  setTimeout(() => { psToken = null; }, (d.expires_in - 60) * 1000);
+  return psToken;
+}
 
 async function psFetch(path, opts = {}) {
   const s = await getSettings();
-  if (!s.pagseguro_email || !s.pagseguro_token) throw new Error('PagSeguro não configurado');
+  if (!psToken) await psGetToken(s);
   const r = await fetch(`${PS_API}${path}`, {
     ...opts,
-    headers: { 'Content-Type':'application/json', 'x-email': s.pagseguro_email, 'x-token': s.pagseguro_token, ...opts.headers }
+    headers: { 'Content-Type':'application/json', 'Authorization':`Bearer ${psToken}`, ...opts.headers }
   });
   const d = await r.json();
   if (!r.ok) throw new Error(d.error_messages?.[0]?.description || d.message || 'Erro PagSeguro');
