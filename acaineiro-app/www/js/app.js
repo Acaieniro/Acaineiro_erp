@@ -501,6 +501,35 @@ function irResgatarCupom() {
   redirectToCheckout = true;
   navigateTo('cupons');
 }
+async function resgatarProdutoFidelidade(couponCode, productId) {
+  try {
+    await API.post('/api/loyalty/redeem-product', { coupon_code: couponCode });
+  } catch (e) {}
+  try {
+    const products = await API.get('/api/products/all');
+    const product = products.find(p => p.id == productId);
+    if (product) {
+      const existing = cart.find(i => i.id === product.id && i.is_reward);
+      if (!existing) {
+        cart.push({
+          id: product.id,
+          name: `🏆 ${product.name} (Fidelidade)`,
+          price: 0,
+          qty: 1,
+          icon: product.icon || '🎁',
+          is_reward: true,
+          original_price: product.price
+        });
+        updateCartUI();
+      }
+      localStorage.removeItem('acaineiro_last_reward');
+      navigateTo('checkout');
+      showCheckout();
+      const toast = document.getElementById('toast');
+      if (toast) { toast.textContent = `🎉 ${product.name} grátis adicionado ao carrinho!`; toast.style.display = 'block'; toast.style.opacity = '1'; setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.style.display = 'none', 300); }, 3000); }
+    }
+  } catch (e) { alert('Erro ao resgatar recompensa'); }
+}
 function resgatarCupom(code, discountPercent, discountValue) {
   cupomResgatado = code;
   localStorage.setItem('cupomResgatado', code);
@@ -582,17 +611,42 @@ async function renderCouponsPage() {
         }
         // Also merge local reward if not already in list
         if (localReward && !loyaltyRewards.find(r => r.coupon_code === localReward.code)) {
-          loyaltyRewards.unshift({
-            coupon_code: localReward.code,
-            description: localReward.desc || 'Cupom de fidelidade',
-            discount_percent: localReward.type === 'percent' ? localReward.value : 0,
-            discount_value: localReward.type !== 'percent' ? localReward.value : 0,
-            image_url: localReward.image_url || ''
-          });
+          if (localReward.type === 'product') {
+            loyaltyRewards.unshift({
+              coupon_code: localReward.code,
+              reward_product_id: localReward.product_id,
+              product_name: localReward.product_name,
+              description: localReward.desc || '',
+              discount_percent: 0,
+              discount_value: localReward.value || 0,
+              image_url: localReward.image_url || ''
+            });
+          } else {
+            loyaltyRewards.unshift({
+              coupon_code: localReward.code,
+              description: localReward.desc || 'Cupom de fidelidade',
+              discount_percent: localReward.type === 'percent' ? localReward.value : 0,
+              discount_value: localReward.type !== 'percent' ? localReward.value : 0,
+              image_url: localReward.image_url || ''
+            });
+          }
         }
         if (loyaltyRewards.length) {
           html += `<div style="margin-bottom:12px;font-size:13px;color:var(--text-tertiary);font-weight:600;">🎁 Seus cupons de fidelidade</div>`;
           html += loyaltyRewards.map(r => {
+            const isProduct = parseInt(r.reward_product_id) > 0;
+            if (isProduct) {
+              const pImg = r.product_image || settings.loyalty_reward_image || '';
+              return `
+              <div class="coupon-page-card" style="border:2px solid #22c55e;">
+                <div class="coupon-page-body">
+                  <div class="coupon-page-code" style="color:#16a34a;">🏆 ${r.product_name || 'Produto Grátis'}</div>
+                  <div class="coupon-page-desc">${r.description || ''}</div>
+                  <div style="font-size:13px;color:#16a34a;font-weight:700;margin:4px 0;">R$ 0,00 • Grátis</div>
+                  <button class="coupon-page-btn resgatar" data-code="${r.coupon_code}" data-product-id="${r.reward_product_id}" onclick="resgatarProdutoFidelidade(this.dataset.code, this.dataset.productId)">🎁 Resgatar Agora</button>
+                </div>
+              </div>`;
+            }
             const imgUrl = settings.loyalty_reward_image || '';
             const hasImg = !!imgUrl;
             const isPercent = parseFloat(r.discount_percent || 0) > 0;
@@ -1128,9 +1182,19 @@ function calcTroco() {
 async function toggleCardSelector() {} // no-op, kept for compatibility
 
 
+function toggleOrderType() {
+  const isPickup = document.querySelector('input[name="order_type"]:checked')?.value === 'pickup';
+  const addrGroup = document.querySelector('.checkout-address-group');
+  const addrInfo = document.getElementById('checkout-address-info');
+  if (addrGroup) addrGroup.style.display = isPickup ? 'none' : 'flex';
+  if (addrInfo) addrInfo.style.display = isPickup ? 'none' : 'block';
+  showCheckout();
+}
+
 function showCheckout() {
   if (!cart.length) { alert('Carrinho vazio!'); return; }
-  const fee = parseFloat(settings.delivery_fee) || 0;
+  const isPickup = document.querySelector('input[name="order_type"]:checked')?.value === 'pickup';
+  const fee = isPickup ? 0 : (parseFloat(settings.delivery_fee) || 0);
   const subtotal = cart.reduce((s, i) => s + (i.price * i.qty), 0);
   const discount = window.activeCoupon ? window.activeCoupon.discount : 0;
   const total = subtotal + fee - discount;
@@ -1154,6 +1218,8 @@ function showCheckout() {
     couponRow.style.display = 'none';
   }
 
+  const feeEl = document.getElementById('checkout-fee');
+  if (feeEl) feeEl.textContent = isPickup ? 'Grátis (retirada)' : `R$ ${fee.toFixed(2).replace('.',',')}`;
   document.getElementById('checkout-total').textContent = `R$ ${total.toFixed(2).replace('.',',')}`;
 
   fillCheckoutData();
@@ -1253,7 +1319,8 @@ async function submitOrder() {
 
   try {
     const paymentMethodDetail = payment.value === 'cartao' ? (document.querySelector('input[name="card_type"]:checked')?.value || '') : '';
-    const r = await API.post('/api/orders', { customer: { name, phone, address, neighborhood }, items: cart.map(i => i.is_combo ? { id: i.id, name: i.name, description: i.description || '', price: i.price, qty: i.qty, icon: i.icon, is_combo: true, combo_items: i.items } : { id: i.id, name: i.name, description: i.description || '', price: i.price, qty: i.qty, icon: i.icon }), payment_method: payment.value, payment_method_detail: paymentMethodDetail, notes, amount_paid, change_due, coupon_code: couponCode });
+    const order_type = document.querySelector('input[name="order_type"]:checked')?.value || 'delivery';
+    const r = await API.post('/api/orders', { customer: { name, phone, address, neighborhood }, items: cart.map(i => i.is_combo ? { id: i.id, name: i.name, description: i.description || '', price: i.price, qty: i.qty, icon: i.icon, is_combo: true, combo_items: i.items } : { id: i.id, name: i.name, description: i.description || '', price: i.price, qty: i.qty, icon: i.icon }), payment_method: payment.value, payment_method_detail: paymentMethodDetail, notes, amount_paid, change_due, coupon_code: couponCode, order_type });
     // times_used é incrementado no backend ao criar o pedido
     if (couponCode && couponCode.startsWith('FIDEL-')) {
       localStorage.removeItem('acaineiro_last_reward');
@@ -1426,9 +1493,13 @@ async function confirmDelivery() {
       localStorage.setItem('acaineiro_orders', JSON.stringify(saved));
     }
     if (data.loyaltyReward) {
-      const rewardLabel = data.loyaltyReward.type === 'percent' ? `${data.loyaltyReward.value}% de desconto` : `R$ ${parseFloat(data.loyaltyReward.value).toFixed(2).replace('.',',')}`;
       localStorage.setItem('acaineiro_last_reward', JSON.stringify(data.loyaltyReward));
-      alert(`🎉 Parabéns! Você completou ${data.loyaltyGoal || 10} pedidos e ganhou ${rewardLabel}! Código: ${data.loyaltyReward.code} - Confira na aba Cupons!`);
+      if (data.loyaltyReward.type === 'product') {
+        alert(`🎉 Parabéns! Você completou ${data.loyaltyGoal || 10} pedidos e ganhou ${data.loyaltyReward.product_name} grátis! Confira na aba Cupons.`);
+      } else {
+        const rewardLabel = data.loyaltyReward.type === 'percent' ? `${data.loyaltyReward.value}% de desconto` : `R$ ${parseFloat(data.loyaltyReward.value).toFixed(2).replace('.',',')}`;
+        alert(`🎉 Parabéns! Você completou ${data.loyaltyGoal || 10} pedidos e ganhou ${rewardLabel}! Código: ${data.loyaltyReward.code} - Confira na aba Cupons!`);
+      }
     } else {
       alert('🎉 Obrigado! Pedido confirmado com sucesso!');
     }

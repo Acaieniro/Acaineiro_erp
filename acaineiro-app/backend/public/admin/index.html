@@ -686,6 +686,13 @@
             </div>
           </div>
           <div class="form-row">
+            <div class="form-group" style="max-width:250px">
+              <label>Produto como Prêmio (opcional)</label>
+              <select id="set-loyalty_reward_product_id" onchange="updateLoyaltyProduct()">
+                <option value="0">— Usar desconto em R$ —</option>
+              </select>
+              <p style="font-size:11px;color:#888;margin-top:2px;">Se selecionar um produto, o prêmio será esse produto grátis</p>
+            </div>
             <div class="form-group">
               <label>Descrição do Prêmio</label>
               <input id="set-loyalty_reward_desc" placeholder="Ex: R$ 10 de desconto no próximo pedido">
@@ -879,7 +886,7 @@
         <div style="font-size:10px;margin:4px 0;">
           <div>👤 ${esc(o.customer_name)}</div>
           <div>📞 ${esc(o.customer_phone)}</div>
-          ${o.customer_address ? `<div>📍 ${esc(o.customer_address)}${o.customer_neighborhood ? ' - ' + esc(o.customer_neighborhood) : ''}</div>` : ''}
+          ${o.order_type === 'pickup' ? '<div>🏪 Retirada na Loja</div>' : (o.customer_address ? `<div>📍 ${esc(o.customer_address)}${o.customer_neighborhood ? ' - ' + esc(o.customer_neighborhood) : ''}</div>` : '')}
           ${o.notes ? `<div>📝 ${esc(o.notes)}</div>` : ''}
         </div>
         <div class="r-line"></div>
@@ -1118,7 +1125,7 @@
               <div style="flex:1;min-width:200px;">
                 <div style="font-size:14px;font-weight:600;color:#333;">${o.customer_name}</div>
                 <div style="font-size:13px;color:#666;">📞 ${o.customer_phone}</div>
-                ${o.customer_address ? `<div style="font-size:13px;color:#666;">📍 ${o.customer_address}${o.customer_neighborhood ? ' - ' + o.customer_neighborhood : ''}</div>` : ''}
+                ${o.order_type === 'pickup' ? `<div style="font-size:13px;color:#b45309;font-weight:600;">🏪 Retirada na Loja</div>` : (o.customer_address ? `<div style="font-size:13px;color:#666;">📍 ${o.customer_address}${o.customer_neighborhood ? ' - ' + o.customer_neighborhood : ''}</div>` : '')}
                 ${o.notes ? `<div style="font-size:13px;color:#888;margin-top:4px;">📝 ${o.notes}</div>` : ''}
                 ${o.coupon_code && o.coupon_code.startsWith('FIDEL-') ? `<div style="font-size:13px;color:#b45309;margin-top:4px;font-weight:600;">🎁 Cupom Fidelidade (${o.coupon_code}) — NÃO COBRAR</div>` : ''}
                 ${o.coupon_code && !o.coupon_code.startsWith('FIDEL-') ? `<div style="font-size:13px;color:#888;margin-top:4px;">🏷️ Cupom: ${o.coupon_code}</div>` : ''}
@@ -1459,7 +1466,7 @@
     }
 
     async function saveSettings() {
-      const keys = ['store_name','store_phone','store_address','delivery_fee','store_open','store_close','pix_key','mp_access_token','mp_public_key','loyalty_goal','loyalty_reward_type','loyalty_reward_value','loyalty_reward_desc','printer_mode','printer_ip','printer_port','auto_print'];
+      const keys = ['store_name','store_phone','store_address','delivery_fee','store_open','store_close','pix_key','mp_access_token','mp_public_key','loyalty_goal','loyalty_reward_type','loyalty_reward_value','loyalty_reward_desc','loyalty_reward_product_id','printer_mode','printer_ip','printer_port','auto_print'];
       const data = {};
       for (const k of keys) {
         const el = document.getElementById('set-' + k);
@@ -2044,14 +2051,27 @@
     async function loadLoyaltySettings() {
       try {
         const s = await api('/api/settings');
-        const keys = ['loyalty_goal','loyalty_reward_type','loyalty_reward_value','loyalty_reward_desc','loyalty_reward_image'];
+        const keys = ['loyalty_goal','loyalty_reward_type','loyalty_reward_value','loyalty_reward_desc','loyalty_reward_image','loyalty_reward_product_id'];
         for (const k of keys) {
           const el = document.getElementById('set-' + k);
-          if (el) el.value = s[k] || '';
+          if (el) el.value = s[k] || '0';
         }
         const rp = document.getElementById('set-loyalty_reward_image-preview');
         if (rp) { rp.src = s.loyalty_reward_image || ''; rp.style.display = s.loyalty_reward_image ? 'block' : 'none'; }
         updateLoyaltyLabel();
+        updateLoyaltyProduct();
+
+        // Populate product dropdown
+        const prodSel = document.getElementById('set-loyalty_reward_product_id');
+        if (prodSel) {
+          try {
+            const prods = await api('/api/products/all');
+            const active = prods.filter(p => p.active);
+            prodSel.innerHTML = '<option value="0">— Usar desconto em R$ —</option>' +
+              active.map(p => `<option value="${p.id}">${p.icon || '🥣'} ${p.name} (R$ ${parseFloat(p.price).toFixed(2).replace('.',',')})</option>`).join('');
+            prodSel.value = s.loyalty_reward_product_id || '0';
+          } catch (e) {}
+        }
 
         // Load reward history
         const rewards = await api('/api/loyalty/rewards/all');
@@ -2078,8 +2098,15 @@
       } catch (e) { toast('Erro: ' + e.message); }
     }
 
+    function updateLoyaltyProduct() {
+      const sel = document.getElementById('set-loyalty_reward_product_id');
+      const isProduct = sel && parseInt(sel.value) > 0;
+      document.getElementById('set-loyalty_reward_type').disabled = isProduct;
+      document.getElementById('set-loyalty_reward_value').disabled = isProduct;
+    }
+
     async function saveLoyaltySettings() {
-      const keys = ['loyalty_goal','loyalty_reward_type','loyalty_reward_value','loyalty_reward_desc','loyalty_reward_image'];
+      const keys = ['loyalty_goal','loyalty_reward_type','loyalty_reward_value','loyalty_reward_desc','loyalty_reward_image','loyalty_reward_product_id'];
       const data = {};
       for (const k of keys) {
         const el = document.getElementById('set-' + k);
