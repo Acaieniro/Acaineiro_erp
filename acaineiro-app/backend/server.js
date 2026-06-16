@@ -8,6 +8,8 @@ const multer = require('multer');
 const cloudinary = require('cloudinary').v2;
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
 
+const { PrinterManager } = require('./lib/printer');
+
 require('dotenv').config();
 
 cloudinary.config({
@@ -66,6 +68,18 @@ app.use(express.static(PUBLIC, {
 }));
 
 const WWW_PATH = path.join(__dirname, '..', 'www');
+// ─── Printer ───
+const printerManager = new PrinterManager();
+
+async function initPrinter() {
+  try {
+    const settings = await getSettings();
+    await printerManager.init(settings);
+  } catch (e) {
+    console.log('[Printer] Init error:', e.message);
+  }
+}
+
 app.use('/app', express.static(WWW_PATH, {
   maxAge: 0,
   setHeaders(res, p) {
@@ -578,6 +592,7 @@ app.post('/api/orders', async (req, res) => {
     payment_method_detail || '', amount_paid || null, change_due || 0, notes || '', appliedCoupon || '');
 
   if (io) io.to('admin').emit('new-order', { id: r.lastInsertRowid, customer_name: customer.name, total, payment_method: payment_method || 'dinheiro' });
+
   res.json({ id: r.lastInsertRowid, total, delivery_fee: deliveryFee });
 });
 
@@ -620,6 +635,14 @@ app.put('/api/orders/:id/status', adminAuth, async (req, res) => {
   const order = await db.get('SELECT * FROM orders WHERE id=?', req.params.id);
   if (order) order.items = JSON.parse(order.items_json);
   if (io) { io.to('admin').emit('order-status', order); io.to(`order-${order.id}`).emit('status-update', order); }
+  // Auto-print quando admin aceita o pedido (status → preparando)
+  if (status === 'preparando' && !isNetlify) {
+    getSettings().then(s => {
+      if (s.auto_print === '1' || s.auto_print === undefined) {
+        printerManager.printOrder(order, s).catch(e => console.log('[Printer] Auto-print error:', e.message));
+      }
+    }).catch(() => {});
+  }
   res.json(order);
 });
 
@@ -806,6 +829,14 @@ app.post('/api/orders/:id/confirm-payment', async (req, res) => {
       io.to(`order-${order.id}`).emit('status-update', order);
       io.to('admin').emit('order-status', order);
       io.to('admin').emit('payment-confirmed-admin', { id: order.id });
+    }
+    // Auto-print Pix apos confirmacao do pagamento
+    if (!isNetlify) {
+      getSettings().then(s => {
+        if (s.auto_print === '1' || s.auto_print === undefined) {
+          printerManager.printOrder(order, s).catch(e => console.log('[Printer] Pix auto-print error:', e.message));
+        }
+      }).catch(() => {});
     }
   }
   res.json({ ok: true });
@@ -1043,9 +1074,42 @@ app.post('/api/upload', adminAuth, upload.single('image'), (req, res) => {
   res.json({ url });
 });
 
+// ─── PRINT ROUTES ───
+app.post('/api/print/:id', adminAuth, async (req, res) => {
+  try {
+    if (isNetlify) return res.status(400).json({ error: 'IMPRIMIR_NO_NAVEGADOR' });
+    const order = await db.get('SELECT * FROM orders WHERE id=?', req.params.id);
+    if (!order) return res.status(404).json({ error: 'Pedido não encontrado' });
+    const settings = await getSettings();
+    const status = printerManager.getStatus();
+    if (!status.configured || status.mode === 'file') return res.status(400).json({ error: 'IMPRIMIR_NO_NAVEGADOR' });
+    await printerManager.printOrder(order, settings);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+app.post('/api/print/test', adminAuth, async (req, res) => {
+  try {
+    if (isNetlify) return res.status(400).json({ error: 'IMPRIMIR_NO_NAVEGADOR' });
+    const status = printerManager.getStatus();
+    if (!status.configured || status.mode === 'file') return res.status(400).json({ error: 'IMPRIMIR_NO_NAVEGADOR' });
+    await printerManager.printTest(await getSettings());
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+app.get('/api/print/status', async (req, res) => {
+  res.json(printerManager.getStatus());
+});
+
 // ─── Server startup (local only) ───
 if (!isNetlify) {
   initDB().then(() => {
+    initPrinter();
     server.listen(PORT, '0.0.0.0', () => {
       console.log('');
       console.log('╔══════════════════════════════════════╗');

@@ -777,6 +777,41 @@
           <button class="btn btn-primary" onclick="saveSettings()" style="flex:1;">💾 Salvar Configurações</button>
         </div>
 
+        <div class="card" style="border-left:4px solid #F59E0B;">
+          <h3 style="font-size:16px;margin-bottom:12px;color:var(--purple-dark);display:flex;align-items:center;gap:8px;">🖨️ Impressora Térmica</h3>
+          <p style="font-size:12px;color:#888;margin-bottom:12px;">Configure a impressora para impressão automática de pedidos.</p>
+          <div class="form-row">
+            <div class="form-group" style="max-width:160px">
+              <label>Modo de Conexão</label>
+              <select id="set-printer_mode" style="width:100%;padding:10px;border:2px solid #ddd;border-radius:8px;font-size:14px;">
+                <option value="usb">USB</option>
+                <option value="network">Rede (TCP/IP)</option>
+                <option value="file">Arquivo (teste)</option>
+              </select>
+            </div>
+          </div>
+          <div id="printer-network-config" style="display:none;">
+            <div class="form-row">
+              <div class="form-group"><label>IP da Impressora</label><input id="set-printer_ip" placeholder="192.168.1.100"></div>
+              <div class="form-group" style="max-width:100px"><label>Porta</label><input id="set-printer_port" value="9100"></div>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group" style="max-width:160px">
+              <label>Auto-imprimir</label>
+              <select id="set-auto_print" style="width:100%;padding:10px;border:2px solid #ddd;border-radius:8px;font-size:14px;">
+                <option value="1">Sim</option>
+                <option value="0">Não</option>
+              </select>
+            </div>
+            <div class="form-group" style="display:flex;align-items:flex-end;padding-bottom:4px;">
+              <button class="btn btn-sm" style="background:var(--purple);color:#FFF;" onclick="testPrinter()">🔧 Testar Impressão</button>
+              <button class="btn btn-sm" style="background:var(--yellow);color:var(--white-solid);margin-left:8px;" onclick="checkPrinterStatus()">📋 Status</button>
+            </div>
+          </div>
+          <div id="printer-status-msg" style="font-size:13px;margin-top:8px;"></div>
+        </div>
+
         <div class="card">
           <h3 style="font-size:16px;margin-bottom:8px;color:#333;">🔒 Senha do Admin</h3>
           <p style="font-size:13px;color:#666;margin-bottom:12px;">Atualmente: <strong>admin123</strong> (para alterar, edite o server.js)</p>
@@ -794,14 +829,41 @@
     let storeSettings = {};
 
     async function loadStoreSettings() {
-      try { storeSettings = await api('/api/settings'); } catch (e) {}
+      try {
+        storeSettings = await api('/api/settings');
+        const printerKeys = ['printer_mode','printer_ip','printer_port','auto_print'];
+        for (const k of printerKeys) {
+          const el = document.getElementById('set-' + k);
+          if (el && storeSettings[k] !== undefined) el.value = storeSettings[k];
+        }
+        togglePrinterConfig();
+        if (document.getElementById('set-printer_mode')) {
+          document.getElementById('set-printer_mode').addEventListener('change', togglePrinterConfig);
+        }
+      } catch (e) {}
     }
 
-    function printReceipt(id) {
+    async function printReceipt(id) {
       const o = orders.find(x => x.id === id);
       if (!o) return toast('Pedido não encontrado');
       const s = storeSettings;
-      const items = typeof o.items === 'string' ? JSON.parse(o.items) : (o.items || []);
+
+      // 1. Tenta print-agent local (http://localhost:3099) - funciona mesmo do site online
+      const agentURL = `http://localhost:3099/api/print/${id}`;
+      try {
+        const r = await fetch(agentURL, { method: 'POST' });
+        if (r.ok) { toast('🖨️ Pedido enviado para impressora térmica!'); return; }
+      } catch (_) {}
+
+      // 2. Tenta mesma origem (funciona quando admin ta no localhost:3000)
+      try {
+        await api('/api/print/' + id, { method: 'POST' });
+        toast('🖨️ Pedido enviado para impressora térmica!');
+        return;
+      } catch (e) {
+        // Fallback: imprime pelo navegador (seleciona a impressora manualmente)
+      }
+      toast('🖨️ Abrindo impressão...');
       const now = new Date(o.created_at).toLocaleString('pt-BR');
       const payLabels = { 'pix':'💠 Pix', 'cartao':'💳 Cartão', 'dinheiro':'💵 Dinheiro' };
       const el = document.getElementById('receipt-output');
@@ -1393,10 +1455,11 @@
           else el.value = v;
         }
       } catch (e) {}
+      if (typeof togglePrinterConfig === 'function') togglePrinterConfig();
     }
 
     async function saveSettings() {
-      const keys = ['store_name','store_phone','store_address','delivery_fee','store_open','store_close','pix_key','mp_access_token','mp_public_key','loyalty_goal','loyalty_reward_type','loyalty_reward_value','loyalty_reward_desc'];
+      const keys = ['store_name','store_phone','store_address','delivery_fee','store_open','store_close','pix_key','mp_access_token','mp_public_key','loyalty_goal','loyalty_reward_type','loyalty_reward_value','loyalty_reward_desc','printer_mode','printer_ip','printer_port','auto_print'];
       const data = {};
       for (const k of keys) {
         const el = document.getElementById('set-' + k);
@@ -1405,6 +1468,35 @@
       data.card_payment_enabled = document.getElementById('set-card_enabled').checked ? '1' : '0';
       try { await api('/api/settings', { method: 'PUT', body: JSON.stringify(data) }); toast('Configurações salvas!'); }
       catch (e) { toast('Erro ao salvar'); }
+    }
+
+    async function testPrinter() {
+      try {
+        document.getElementById('printer-status-msg').innerHTML = '<span style="color:#888;">⏳ Testando impressora...</span>';
+        await api('/api/print/test', { method: 'POST' });
+        document.getElementById('printer-status-msg').innerHTML = '<span style="color:var(--green);font-weight:600;">✅ Teste enviado para impressora!</span>';
+      } catch (e) {
+        document.getElementById('printer-status-msg').innerHTML = `<span style="color:var(--red);font-weight:600;">❌ ${esc(e.message)}</span>`;
+      }
+    }
+
+    async function checkPrinterStatus() {
+      try {
+        const st = await api('/api/print/status');
+        if (st.configured) {
+          document.getElementById('printer-status-msg').innerHTML = `<span style="color:var(--green);font-weight:600;">✅ Impressora configurada (${st.mode})</span>`;
+        } else {
+          document.getElementById('printer-status-msg').innerHTML = '<span style="color:var(--red);font-weight:600;">❌ Impressora não configurada</span>';
+        }
+      } catch (e) {
+        document.getElementById('printer-status-msg').innerHTML = `<span style="color:var(--red);font-weight:600;">❌ ${esc(e.message)}</span>`;
+      }
+    }
+
+    function togglePrinterConfig() {
+      const mode = document.getElementById('set-printer_mode').value;
+      const netConfig = document.getElementById('printer-network-config');
+      netConfig.style.display = mode === 'network' ? 'flex' : 'none';
     }
 
     // COMBOS

@@ -1,0 +1,59 @@
+========================================
+   🖨️ AÇAINEIRO - SERVIÇO DE IMPRESSÃO
+========================================
+
+IMPRIMIR PEDIDOS AUTOMATICAMENTE
+----------------------------------------
+
+1. INSTALAR NODE.JS
+   https://nodejs.org (baixar a versão LTS)
+   Instalar com todas as opções padrão
+
+2. EXTRAIR O ARQUIVO
+   Extrair tudo para uma pasta tipo:
+   C:\AcaineiroPrint
+
+3. INSTALAR DRIVER DA IMPRESSORA (UMA VEZ)
+   - Baixar Zadig: https://zadig.akeo.ie/
+   - Conectar a impressora USB
+   - Abrir Zadig > Options > List All Devices
+   - Selecionar "POS80 Printer USB"
+   - Trocar driver para "WinUSB"
+   - Clicar "Install Driver"
+
+4. INICIAR O SERVIÇO
+   Dar 2 cliques em "iniciar.bat"
+   (ou abrir terminal na pasta e digitar: node print-agent.js)
+
+   Vai aparecer:
+   ✅ Conectado ao Turso
+   ✅ Impressora configurada
+   🔄 Monitorando pedidos...
+
+5. PRONTO!
+   Cada pedido aceito no admin vai imprimir automaticamente.
+
+
+TESTAR A IMPRESSORA
+----------------------------------------
+Dar 2 cliques em "test-printer.js"
+Ou no terminal: node test-printer.js
+
+
+PARAR O SERVIÇO
+----------------------------------------
+Fechar a janela ou apertar Ctrl+C no terminal
+
+
+SOLUÇÃO DE PROBLEMAS
+----------------------------------------
+❌ "Impressora não encontrada"
+   → Verificar cabo USB
+   → Repetir passo 3 (Zadig)
+
+❌ "Erro ao conectar no Turso"
+   → Verificar internet
+   → Verificar .env
+
+❌ Papel sai em branco
+   → Virar o papel (só imprime de um lado)
