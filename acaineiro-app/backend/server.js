@@ -10,8 +10,10 @@ const { CloudinaryStorage } = require('multer-storage-cloudinary');
 
 const isNetlify = !!process.env.NETLIFY;
 let PrinterManager;
-if (!isNetlify) {
-  PrinterManager = eval('require')('./lib/printer').PrinterManager;
+try {
+  PrinterManager = require('./lib/printer').PrinterManager;
+} catch (e) {
+  // printer module not available (Netlify or missing deps)
 }
 
 require('dotenv').config();
