@@ -1257,6 +1257,9 @@ async function submitOrder() {
     if (window.activeCoupon && window.activeCoupon.id) {
       fetch(`${API_URL}/api/coupons/${window.activeCoupon.id}/use`, { method: 'POST' }).catch(() => {});
     }
+    if (couponCode && couponCode.startsWith('FIDEL-')) {
+      localStorage.removeItem('acaineiro_last_reward');
+    }
     const orderTotal = r.total;
     saveOrderLocally({ id: r.id, status: 'novo', total: orderTotal, items: [...cart], customer: { name, phone, address, neighborhood }, payment_method: payment.value, payment_method_detail: paymentMethodDetail, amount_paid, change_due, notes, coupon: couponCode, created_at: new Date().toISOString() });
     cart = []; updateCartUI();

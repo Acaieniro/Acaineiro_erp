@@ -456,7 +456,7 @@ app.get('/api/loyalty/:phone', async (req, res) => {
   const count = loyalty ? loyalty.count : 0;
   const rewards = await db.all(`SELECT lr.coupon_code, lr.created_at, c.discount_percent, c.discount_value, c.description, c.image_url
     FROM loyalty_rewards lr LEFT JOIN coupons c ON lr.coupon_code = c.code
-    WHERE lr.phone=? ORDER BY lr.created_at DESC`, phone);
+    WHERE lr.phone=? AND (c.times_used IS NULL OR c.times_used < c.usage_limit) ORDER BY lr.created_at DESC`, phone);
   res.json({ count, rewards });
 });
 
