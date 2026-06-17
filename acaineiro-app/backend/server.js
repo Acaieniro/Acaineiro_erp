@@ -469,31 +469,46 @@ app.get('/api/loyalty/rewards/all', adminAuth, async (req, res) => {
 });
 
 app.get('/api/loyalty/:phone', async (req, res) => {
+  const phone = req.params.phone;
+  if (!phone) return res.json({ count: 0, rewards: [] });
   try {
-    const phone = req.params.phone;
-    if (!phone) return res.json({ count: 0, rewards: [] });
     const loyalty = await db.get('SELECT * FROM loyalty WHERE phone=?', phone);
     const count = loyalty ? loyalty.count : 0;
-    // Query separada p/ identificar onde da erro no Turso
-    let rewards = [];
-    try {
-      rewards = await db.all(`SELECT lr.coupon_code, lr.created_at, lr.reward_product_id, lr.redeemed_at,
-        c.discount_percent, c.discount_value, c.description, c.image_url,
-        p.name as product_name, p.price as product_price, p.image_url as product_image
-        FROM loyalty_rewards lr LEFT JOIN coupons c ON lr.coupon_code = c.code
-        LEFT JOIN products p ON lr.reward_product_id = p.id
-        WHERE lr.phone=? AND (c.times_used IS NULL OR c.times_used < c.usage_limit) AND lr.redeemed_at IS NULL
-        ORDER BY lr.created_at DESC`, phone);
-    } catch (e) {
-      console.error('Erro na query loyalty_rewards:', e.message);
-      return res.status(500).json({ error: 'Erro ao buscar recompensas', detail: e.message });
+    // Garantir colunas (seguro: ja existe, ignora)
+    try { await db.run("ALTER TABLE loyalty_rewards ADD COLUMN reward_product_id INTEGER DEFAULT 0"); } catch (e) {}
+    try { await db.run("ALTER TABLE loyalty_rewards ADD COLUMN redeemed_at TEXT"); } catch (e) {}
+    // Buscar rewards sem depender das colunas de migracao no WHERE
+    const rows = await db.all(`SELECT lr.coupon_code, lr.created_at, lr.reward_product_id, lr.redeemed_at,
+      c.name as coupon_name, c.discount_percent, c.discount_value, c.description, c.image_url,
+      c.times_used, c.usage_limit
+      FROM loyalty_rewards lr LEFT JOIN coupons c ON lr.coupon_code = c.code
+      WHERE lr.phone=? ORDER BY lr.created_at DESC`, phone);
+    // Filtrar em JS (seguro: se coluna redeemed_at nao existe, retorna undefined => nao filtra)
+    const rewards = [];
+    const productIds = [];
+    for (const r of rows) {
+      if (r.redeemed_at) continue;
+      const used = parseInt(r.usage_limit || 0) > 0 && parseInt(r.times_used || 0) >= parseInt(r.usage_limit);
+      if (used) continue;
+      const pid = parseInt(r.reward_product_id || 0);
+      if (pid > 0) productIds.push(pid);
+      rewards.push(r);
     }
-    const settings = await getSettings();
-    const goal = parseInt(settings.loyalty_goal) || 10;
-    res.json({ count, goal, rewards });
+    // Buscar dados dos produtos em lote
+    if (productIds.length) {
+      const ids = [...new Set(productIds)];
+      const products = await db.all(`SELECT id, name, price, image_url FROM products WHERE id IN (${ids.join(',')})`);
+      const pmap = {};
+      for (const p of products) pmap[p.id] = p;
+      for (const r of rewards) {
+        const p = pmap[parseInt(r.reward_product_id)];
+        if (p) { r.product_name = p.name; r.product_price = p.price; r.product_image = p.image_url; }
+      }
+    }
+    res.json({ count, rewards });
   } catch (e) {
-    console.error('Erro no endpoint loyalty:', e.message);
-    res.status(500).json({ error: 'Erro interno', detail: e.message });
+    console.error('Erro endpoint loyalty:', e.message);
+    res.status(500).json({ error: e.message });
   }
 });
 

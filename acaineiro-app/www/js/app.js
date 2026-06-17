@@ -781,7 +781,7 @@ function renderLoyalty() {
   }
 
   API.get(`/api/loyalty/${encodeURIComponent(phone)}`).then(data => {
-    const goal = data.goal || 10;
+    const goal = parseInt(settings.loyalty_goal) || 10;
     const total = Math.min(data.count, goal);
     stampsEl.innerHTML = '';
     for (let i = 0; i < goal; i++) {
