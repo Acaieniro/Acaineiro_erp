@@ -469,20 +469,32 @@ app.get('/api/loyalty/rewards/all', adminAuth, async (req, res) => {
 });
 
 app.get('/api/loyalty/:phone', async (req, res) => {
-  const phone = req.params.phone;
-  if (!phone) return res.json({ count: 0, rewards: [] });
-  const loyalty = await db.get('SELECT * FROM loyalty WHERE phone=?', phone);
-  const count = loyalty ? loyalty.count : 0;
-  const rewards = await db.all(`SELECT lr.coupon_code, lr.created_at, lr.reward_product_id, lr.redeemed_at,
-    c.discount_percent, c.discount_value, c.description, c.image_url,
-    p.name as product_name, p.price as product_price, p.image_url as product_image
-    FROM loyalty_rewards lr LEFT JOIN coupons c ON lr.coupon_code = c.code
-    LEFT JOIN products p ON lr.reward_product_id = p.id
-    WHERE lr.phone=? AND (c.times_used IS NULL OR c.times_used < c.usage_limit) AND lr.redeemed_at IS NULL
-    ORDER BY lr.created_at DESC`, phone);
-  const settings = await getSettings();
-  const goal = parseInt(settings.loyalty_goal) || 10;
-  res.json({ count, goal, rewards });
+  try {
+    const phone = req.params.phone;
+    if (!phone) return res.json({ count: 0, rewards: [] });
+    const loyalty = await db.get('SELECT * FROM loyalty WHERE phone=?', phone);
+    const count = loyalty ? loyalty.count : 0;
+    // Query separada p/ identificar onde da erro no Turso
+    let rewards = [];
+    try {
+      rewards = await db.all(`SELECT lr.coupon_code, lr.created_at, lr.reward_product_id, lr.redeemed_at,
+        c.discount_percent, c.discount_value, c.description, c.image_url,
+        p.name as product_name, p.price as product_price, p.image_url as product_image
+        FROM loyalty_rewards lr LEFT JOIN coupons c ON lr.coupon_code = c.code
+        LEFT JOIN products p ON lr.reward_product_id = p.id
+        WHERE lr.phone=? AND (c.times_used IS NULL OR c.times_used < c.usage_limit) AND lr.redeemed_at IS NULL
+        ORDER BY lr.created_at DESC`, phone);
+    } catch (e) {
+      console.error('Erro na query loyalty_rewards:', e.message);
+      return res.status(500).json({ error: 'Erro ao buscar recompensas', detail: e.message });
+    }
+    const settings = await getSettings();
+    const goal = parseInt(settings.loyalty_goal) || 10;
+    res.json({ count, goal, rewards });
+  } catch (e) {
+    console.error('Erro no endpoint loyalty:', e.message);
+    res.status(500).json({ error: 'Erro interno', detail: e.message });
+  }
 });
 
 app.post('/api/loyalty/redeem-product', async (req, res) => {
