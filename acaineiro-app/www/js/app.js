@@ -1234,7 +1234,7 @@ function showCheckout() {
     document.getElementById('coupon-feedback').className = 'coupon-feedback success';
   } else if (cupomResgatado && !window.activeCoupon) {
     document.getElementById('coupon-input').value = cupomResgatado;
-    applyCoupon();
+    await applyCoupon();
   } else {
     hideCouponApplied();
   }
@@ -1317,7 +1317,15 @@ async function submitOrder() {
     }
   }
 
-  const couponCode = window.activeCoupon ? window.activeCoupon.code : null;
+  let couponCode = window.activeCoupon ? window.activeCoupon.code : null;
+
+  // Re-validar cupom antes de enviar
+  if (couponCode) {
+    try {
+      const v = await API.post('/api/coupons/validate', { code: couponCode, subtotal: totalCalc });
+      if (v.error) { couponCode = null; window.activeCoupon = null; }
+    } catch (e) { couponCode = null; window.activeCoupon = null; }
+  }
 
   try {
     const paymentMethodDetail = payment.value === 'cartao' ? (document.querySelector('input[name="card_type"]:checked')?.value || '') : '';

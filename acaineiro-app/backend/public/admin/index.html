@@ -981,8 +981,8 @@
     document.addEventListener('visibilitychange', () => {
   if (!document.hidden) {
     document.title = 'Açaineiro - Admin';
-    loadOrders(); startRefresh();
-  } else { stopRefresh(); }
+    loadOrders();
+  }
 });
 
     function initSocket() {
@@ -1088,8 +1088,8 @@
       document.querySelectorAll('nav a').forEach(a => a.classList.remove('active'));
       document.getElementById('page-' + name).classList.add('active');
       document.querySelector(`nav a[data-page="${name}"]`).classList.add('active');
-      if (name === 'dashboard') { loadOrders(); startRefresh(); }
-      else { stopRefresh(); }
+      if (name === 'dashboard') { loadOrders(); }
+      startRefresh();
       if (name === 'dashboard' || name === 'orders') {
         clearFlash();
       }
