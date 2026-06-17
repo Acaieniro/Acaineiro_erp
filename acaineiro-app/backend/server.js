@@ -1145,11 +1145,7 @@ app.use('/admin', express.static(path.join(__dirname, 'public', 'admin'), { maxA
 const useCloudinary = !!(process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET);
 let upload;
 if (useCloudinary) {
-  const storage = new CloudinaryStorage({
-    cloudinary,
-    params: { folder: 'acaineiro', allowed_formats: ['jpg','jpeg','png','gif','webp'], public_id: () => `${Date.now()}-${Math.random().toString(36).slice(2,8)}` }
-  });
-  upload = multer({ storage, limits: { fileSize: 5 * 1024 * 1024 } });
+  upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
 } else {
   const storage = multer.diskStorage({
     destination: (req, file, cb) => cb(null, path.join(__dirname, 'public', 'uploads')),
@@ -1160,10 +1156,24 @@ if (useCloudinary) {
   });
   upload = multer({ storage, limits: { fileSize: 5 * 1024 * 1024 } });
 }
-app.post('/api/upload', adminAuth, upload.single('image'), (req, res) => {
-  if (!req.file) return res.status(400).json({ error: 'Nenhuma imagem enviada' });
-  const url = useCloudinary ? req.file.path : `/uploads/${req.file.filename}`;
-  res.json({ url });
+app.post('/api/upload', adminAuth, (req, res) => {
+  upload.single('image')(req, res, async (err) => {
+    if (err) return res.status(400).json({ error: err.message || 'Erro no upload' });
+    if (!req.file) return res.status(400).json({ error: 'Nenhuma imagem enviada' });
+    try {
+      if (useCloudinary) {
+        const b64 = req.file.buffer.toString('base64');
+        const dataUri = `data:${req.file.mimetype};base64,${b64}`;
+        const result = await cloudinary.uploader.upload(dataUri, { folder: 'acaineiro' });
+        res.json({ url: result.secure_url });
+      } else {
+        res.json({ url: `/uploads/${req.file.filename}` });
+      }
+    } catch (e) {
+      console.error('[Upload]', e.message);
+      res.status(500).json({ error: e.message || 'Erro ao enviar imagem' });
+    }
+  });
 });
 
 // ─── PRINT ROUTES ───
