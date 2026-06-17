@@ -208,7 +208,8 @@ async function initDB() {
     "ALTER TABLE orders ADD COLUMN order_type TEXT DEFAULT 'delivery'",
     "ALTER TABLE loyalty_rewards ADD COLUMN reward_product_id INTEGER DEFAULT 0",
     "ALTER TABLE loyalty_rewards ADD COLUMN redeemed_at TEXT",
-    "ALTER TABLE orders ADD COLUMN ps_charge_id TEXT"
+    "ALTER TABLE orders ADD COLUMN ps_charge_id TEXT",
+    "ALTER TABLE products ADD COLUMN sort_order INTEGER DEFAULT 0"
   ]) {
     try { await db.run(sql); } catch (e) {}
   }
@@ -321,28 +322,28 @@ app.get('/api/categories', async (req, res) => {
 app.get('/api/products', async (req, res) => {
   const products = await db.all(`SELECT p.*, c.name as category_name, c.slug as category_slug
     FROM products p JOIN categories c ON p.category_id = c.id
-    WHERE p.active = 1 ORDER BY c.sort_order, p.id`);
+    WHERE p.active = 1 ORDER BY c.sort_order, p.sort_order, p.id`);
   res.json(products);
 });
 
 app.get('/api/products/all', adminAuth, async (req, res) => {
   const products = await db.all(`SELECT p.*, c.name as category_name, c.slug as category_slug
     FROM products p JOIN categories c ON p.category_id = c.id
-    ORDER BY c.sort_order, p.id`);
+    ORDER BY c.sort_order, p.sort_order, p.id`);
   res.json(products);
 });
 
 app.post('/api/products', adminAuth, async (req, res) => {
-  const { category_id, name, description, price, promo_price, icon, image } = req.body;
-  const r = await db.run('INSERT INTO products (category_id,name,description,price,promo_price,icon,image) VALUES (?,?,?,?,?,?,?)',
-    category_id, name, description || '', price || 0, promo_price || null, icon || '🥣', image || '');
+  const { category_id, name, description, price, promo_price, icon, image, sort_order } = req.body;
+  const r = await db.run('INSERT INTO products (category_id,name,description,price,promo_price,icon,image,sort_order) VALUES (?,?,?,?,?,?,?,?)',
+    category_id, name, description || '', price || 0, promo_price || null, icon || '🥣', image || '', sort_order || 0);
   res.json({ id: r.lastInsertRowid });
 });
 
 app.put('/api/products/:id', adminAuth, async (req, res) => {
-  const { name, description, price, promo_price, has_promo, icon, image, category_id, active } = req.body;
-  await db.run('UPDATE products SET name=?,description=?,price=?,promo_price=?,has_promo=?,icon=?,image=?,category_id=?,active=? WHERE id=?',
-    name, description, price, promo_price, has_promo ? 1 : 0, icon, image || '', category_id, active ? 1 : 0, req.params.id);
+  const { name, description, price, promo_price, has_promo, icon, image, category_id, active, sort_order } = req.body;
+  await db.run('UPDATE products SET name=?,description=?,price=?,promo_price=?,has_promo=?,icon=?,image=?,category_id=?,active=?,sort_order=? WHERE id=?',
+    name, description, price, promo_price, has_promo ? 1 : 0, icon, image || '', category_id, active ? 1 : 0, sort_order || 0, req.params.id);
   res.json({ ok: true });
 });
 
@@ -372,9 +373,9 @@ app.get('/api/banners/all', adminAuth, async (req, res) => {
 });
 
 app.post('/api/banners', adminAuth, async (req, res) => {
-  const { title, subtitle, button_text, button_action, image_url, bg_color, emoji, icon_url } = req.body;
+  const { title, subtitle, button_text, button_action, image_url, bg_color, emoji, icon_url, sort_order } = req.body;
   const r = await db.run('INSERT INTO banners (title,subtitle,button_text,button_action,image_url,bg_color,emoji,icon_url,sort_order) VALUES (?,?,?,?,?,?,?,?,?)',
-    title || 'Banner', subtitle || '', button_text || '', button_action || 'menu', image_url || '', bg_color || '#7C3AED', emoji || '', icon_url || '', 0);
+    title || 'Banner', subtitle || '', button_text || '', button_action || 'menu', image_url || '', bg_color || '#7C3AED', emoji || '', icon_url || '', sort_order || 0);
   res.json({ id: r.lastInsertRowid });
 });
 

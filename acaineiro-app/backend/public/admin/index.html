@@ -411,6 +411,12 @@
               <button class="btn" onclick="cancelEdit()">Cancelar</button>
             </div>
           </div>
+          <div class="form-row">
+            <div class="form-group" style="max-width:100px">
+              <label>Ordem</label>
+              <input id="pf-sort_order" type="number" value="0" style="text-align:center;">
+            </div>
+          </div>
           <input type="hidden" id="pf-id">
         </div>
         <div class="table-wrap">
@@ -1382,6 +1388,7 @@
       document.getElementById('pf-price').value = p.price;
       document.getElementById('pf-promo').value = p.promo_price || '';
       document.getElementById('pf-active').value = p.active ? '1' : '0';
+      document.getElementById('pf-sort_order').value = p.sort_order || 0;
       document.getElementById('product-form').scrollIntoView({ behavior: 'smooth' });
     }
 
@@ -1397,6 +1404,7 @@
       document.getElementById('pf-price').value = '';
       document.getElementById('pf-promo').value = '';
       document.getElementById('pf-active').value = '1';
+      document.getElementById('pf-sort_order').value = '0';
     }
 
     async function saveProduct() {
@@ -1410,6 +1418,7 @@
         promo_price: parseFloat(document.getElementById('pf-promo').value) || null,
         has_promo: !!parseFloat(document.getElementById('pf-promo').value),
         active: parseInt(document.getElementById('pf-active').value),
+        sort_order: parseInt(document.getElementById('pf-sort_order').value) || 0,
       };
       const id = document.getElementById('pf-id').value;
       try {
