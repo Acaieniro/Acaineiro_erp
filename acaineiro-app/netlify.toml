@@ -1,0 +1,16 @@
+[[headers]]
+  for = "/app/*"
+  [headers.values]
+    Cache-Control = "no-store, no-cache, must-revalidate, proxy-revalidate"
+    Pragma = "no-cache"
+    Expires = "0"
+
+[[headers]]
+  for = "/api/*"
+  [headers.values]
+    Cache-Control = "no-store"
+
+[[redirects]]
+  from = "/app/*"
+  to = "/.netlify/functions/api/:splat"
+  status = 200
