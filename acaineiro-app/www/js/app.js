@@ -1193,7 +1193,7 @@ function toggleOrderType() {
   showCheckout();
 }
 
-function showCheckout() {
+async function showCheckout() {
   if (!cart.length) { alert('Carrinho vazio!'); return; }
   const isPickup = document.querySelector('input[name="order_type"]:checked')?.value === 'pickup';
   const fee = isPickup ? 0 : (parseFloat(settings.delivery_fee) || 0);
