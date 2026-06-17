@@ -958,6 +958,7 @@
         loadAll();
         startRefresh();
         loadStoreSettings();
+        if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
       } catch (e) {
         document.getElementById('login-error').classList.remove('hidden');
       }
@@ -977,7 +978,12 @@
 
     function startRefresh() { stopRefresh(); refreshTimer = setInterval(loadOrders, 2000); }
     function stopRefresh() { if (refreshTimer) { clearInterval(refreshTimer); refreshTimer = null; } }
-    document.addEventListener('visibilitychange', () => { if (!document.hidden) { loadOrders(); startRefresh(); } else { stopRefresh(); } });
+    document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) {
+    document.title = 'Açaineiro - Admin';
+    loadOrders(); startRefresh();
+  } else { stopRefresh(); }
+});
 
     function initSocket() {
       if (socket) socket.disconnect();
@@ -988,6 +994,14 @@
         });
         socket.on('new-order', (data) => {
           toast(`🆕 Novo pedido #${data.id} - ${data.customer_name} - R$ ${data.total.toFixed(2)}`);
+          playSound();
+          document.title = `🆕 Pedido #${data.id} - Açaineiro`;
+          if (Notification.permission === 'granted') {
+            new Notification(`🆕 Novo Pedido #${data.id}`, {
+              body: `${data.customer_name} - R$ ${data.total.toFixed(2)}`,
+              icon: '/logo/logo.png'
+            });
+          }
           if (!alertedOrderIds.has(data.id)) {
             alertedOrderIds.add(data.id);
             flashAttention(data.id);
@@ -1066,6 +1080,7 @@
       if (card) card.classList.remove('flash-new');
       if (lastNewOrderId) alertedOrderIds.delete(lastNewOrderId);
       lastNewOrderId = null;
+      document.title = 'Açaineiro - Admin';
     }
 
     function showPage(name) {

@@ -1324,6 +1324,9 @@ async function submitOrder() {
     const order_type = document.querySelector('input[name="order_type"]:checked')?.value || 'delivery';
     const r = await API.post('/api/orders', { customer: { name, phone, address, neighborhood }, items: cart.map(i => i.is_combo ? { id: i.id, name: i.name, description: i.description || '', price: i.price, qty: i.qty, icon: i.icon, is_combo: true, combo_items: i.items } : { id: i.id, name: i.name, description: i.description || '', price: i.price, qty: i.qty, icon: i.icon }), payment_method: payment.value, payment_method_detail: paymentMethodDetail, notes, amount_paid, change_due, coupon_code: couponCode, order_type });
     // times_used é incrementado no backend ao criar o pedido
+    window.activeCoupon = null;
+    cupomResgatado = null;
+    localStorage.removeItem('cupomResgatado');
     if (couponCode && couponCode.startsWith('FIDEL-')) {
       localStorage.removeItem('acaineiro_last_reward');
     }
