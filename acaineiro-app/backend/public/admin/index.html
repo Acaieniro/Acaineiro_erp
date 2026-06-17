@@ -773,9 +773,17 @@
 
         <div class="card" style="border-left:4px solid #3B82F6;">
           <h3 style="font-size:16px;margin-bottom:12px;color:var(--purple-dark);display:flex;align-items:center;gap:8px;">🔌 PagSeguro (opcional)</h3>
-          <p style="font-size:12px;color:#888;margin-bottom:12px;">Configure para receber Pix. Cole o <strong>Token de Integração</strong> gerado em Venda Online > Integrações > API PagBank. O token é enviado por email.</p>
+          <p style="font-size:12px;color:#888;margin-bottom:12px;">1. Cole o <strong>Token de Integração</strong> enviado por email (Venda Online > Integrações > Utilização de APIs) e clique em Salvar.<br>2. Depois clique em <strong>"Criar Aplicação"</strong> para gerar Client ID + Client Secret automaticamente.</p>
           <div class="form-row">
-            <div class="form-group"><label>Token</label><input id="set-pagseguro_token" placeholder="Cole o token do email" style="font-family:monospace;"></div>
+            <div class="form-group" style="flex:1;"><label>Token</label><input id="set-pagseguro_token" placeholder="Cole o token do email" style="font-family:monospace;"></div>
+            <div class="form-group" style="max-width:180px;display:flex;align-items:flex-end;">
+              <button class="btn btn-secondary" onclick="criarAplicacaoPagBank()" style="white-space:nowrap;">⚡ Criar Aplicação</button>
+            </div>
+          </div>
+          <div id="pagbank-result" style="font-size:12px;margin-top:8px;"></div>
+          <div class="form-row" id="pagbank-oauth-fields" style="display:none;">
+            <div class="form-group"><label>Client ID</label><input id="set-pagseguro_client_id" placeholder="Client ID" style="font-family:monospace;font-size:11px;"></div>
+            <div class="form-group"><label>Client Secret</label><input id="set-pagseguro_client_secret" placeholder="Client Secret" style="font-family:monospace;font-size:11px;"></div>
           </div>
         </div>
 
@@ -1465,7 +1473,7 @@
     }
 
     async function saveSettings() {
-      const keys = ['store_name','store_phone','store_address','delivery_fee','store_open','store_close','pix_key','pagseguro_token','loyalty_goal','loyalty_reward_type','loyalty_reward_value','loyalty_reward_desc','loyalty_reward_product_id','printer_mode','printer_ip','printer_port','auto_print'];
+      const keys = ['store_name','store_phone','store_address','delivery_fee','store_open','store_close','pix_key','pagseguro_token','pagseguro_client_id','pagseguro_client_secret','loyalty_goal','loyalty_reward_type','loyalty_reward_value','loyalty_reward_desc','loyalty_reward_product_id','printer_mode','printer_ip','printer_port','auto_print'];
       const data = {};
       for (const k of keys) {
         const el = document.getElementById('set-' + k);
@@ -1474,6 +1482,24 @@
       data.card_payment_enabled = document.getElementById('set-card_enabled').checked ? '1' : '0';
       try { await api('/api/settings', { method: 'PUT', body: JSON.stringify(data) }); toast('Configurações salvas!'); }
       catch (e) { toast('Erro ao salvar'); }
+    }
+
+    async function criarAplicacaoPagBank() {
+      const el = document.getElementById('pagbank-result');
+      try {
+        el.innerHTML = '<span style="color:#888;">⏳ Criando aplicação no PagBank...</span>';
+        const d = await api('/api/pagbank/criar-aplicacao', { method: 'POST' });
+        if (d.client_id) {
+          document.getElementById('set-pagseguro_client_id').value = d.client_id;
+          document.getElementById('set-pagseguro_client_secret').value = d.client_secret;
+          document.getElementById('pagbank-oauth-fields').style.display = 'flex';
+          el.innerHTML = '<span style="color:var(--green);font-weight:600;">✅ Aplicação criada! Client ID e Client Secret preenchidos. Salve as configurações.</span>';
+        } else {
+          el.innerHTML = `<span style="color:var(--red);">❌ Resposta inesperada: ${esc(JSON.stringify(d))}</span>`;
+        }
+      } catch (e) {
+        el.innerHTML = `<span style="color:var(--red);">❌ ${esc(e.message)}</span>`;
+      }
     }
 
     async function testPrinter() {

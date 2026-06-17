@@ -761,16 +761,50 @@ app.post('/api/orders/:id/cancel-customer', async (req, res) => {
 
 // ─── PAGSEGURO (PAGBANK) ───
 const PS_API = 'https://api.pagseguro.com';
+let psAccessToken = null;
+let psTokenExpiry = 0;
 
 async function psFetch(path, opts = {}) {
   const s = await getSettings();
   if (!s.pagseguro_token) throw new Error('PagSeguro não configurado');
+
+  let token = s.pagseguro_token;
+  if (s.pagseguro_client_id && s.pagseguro_client_secret) {
+    if (!psAccessToken || Date.now() >= psTokenExpiry) {
+      console.log('[PagSeguro] Obtendo access token via OAuth...');
+      const r = await fetch(`${PS_API}/oauth2/token`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${s.pagseguro_token}`,
+          'X_CLIENT_ID': s.pagseguro_client_id,
+          'X_CLIENT_SECRET': s.pagseguro_client_secret,
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: 'grant_type=sms&email=' + encodeURIComponent(s.pagseguro_client_id)
+      });
+      const d = await r.json();
+      if (!r.ok) {
+        console.error('[PagSeguro] Erro OAuth:', r.status, JSON.stringify(d));
+        if (d.error_messages?.[0]?.description?.includes('sms')) {
+          console.log('[PagSeguro] SMS nao disponivel, tentando direto com token');
+        } else {
+          throw new Error(d.error_messages?.[0]?.description || d.message || 'Erro OAuth');
+        }
+      } else {
+        psAccessToken = d.access_token;
+        psTokenExpiry = Date.now() + (d.expires_in - 60) * 1000;
+        console.log('[PagSeguro] Access token obtido, expira em', d.expires_in, 's');
+      }
+    }
+    if (psAccessToken) token = psAccessToken;
+  }
+
   const url = `${PS_API}${path}`;
-  const tokenPreview = s.pagseguro_token.substring(0, 15) + '...';
-  console.log('[PagSeguro] requisicao para', url, 'token:', tokenPreview);
+  const tokenPreview = token.substring(0, 15) + '...';
+  console.log('[PagSeguro]', opts.method || 'GET', url, 'token:', tokenPreview);
   const r = await fetch(url, {
     ...opts,
-    headers: { 'Content-Type':'application/json', 'Authorization':`Bearer ${s.pagseguro_token}`, ...opts.headers }
+    headers: { 'Content-Type':'application/json', 'Authorization':`Bearer ${token}`, ...opts.headers }
   });
   let d;
   try { d = await r.json(); } catch (e) { const t = await r.text(); d = { raw: t.substring(0,200) }; }
@@ -778,7 +812,7 @@ async function psFetch(path, opts = {}) {
     console.error('[PagSeguro] ERRO', r.status, r.statusText, JSON.stringify(d));
     throw new Error(d.error_messages?.[0]?.description || d.message || d.error || `HTTP ${r.status} ${r.statusText}`);
   }
-  console.log('[PagSeguro] sucesso', r.status, JSON.stringify(d).substring(0,100));
+  console.log('[PagSeguro] sucesso', r.status);
   return d;
 }
 
@@ -1158,32 +1192,29 @@ app.get('/api/print/status', async (req, res) => {
   res.json(printerManager.getStatus());
 });
 
-// ─── Server startup (local only) ───
-if (!isNetlify) {
-  initDB().then(() => {
-    initPrinter();
-    server.listen(PORT, '0.0.0.0', () => {
-      console.log('');
-      console.log('╔══════════════════════════════════════╗');
-      console.log('║     🟣 AÇAINEIRO - SISTEMA COMPLETO   ║');
-      console.log('╠══════════════════════════════════════╣');
-      console.log('║                                      ║');
-      console.log(`║  📱 App: http://localhost:${PORT}/app    ║`);
-      console.log(`║  🖥️  Painel: http://localhost:${PORT}/admin ║`);
-      console.log(`║  🔑 Senha: ${ADMIN_PASSWORD}                ║`);
-      console.log('║                                      ║');
-      console.log('╠══════════════════════════════════════╣');
-      console.log('║  Para testar no CELULAR:             ║');
-      console.log('║  1. Descubra seu IP: ipconfig        ║');
-      console.log('║  2. No celular: http://SEUIP:3000    ║');
-      console.log('║                                      ║');
-      console.log('╠══════════════════════════════════════╣');
-      console.log('║  Pressione Ctrl+C para parar         ║');
-      console.log('╚══════════════════════════════════════╝');
-      console.log('');
+// Criar aplicação PagBank (gera Client ID + Client Secret via API)
+app.post('/api/pagbank/criar-aplicacao', adminAuth, async (req, res) => {
+  try {
+    const s = await getSettings();
+    if (!s.pagseguro_token) return res.status(400).json({ error: 'Token PagSeguro não configurado' });
+    const body = {
+      name: 'Açaineiro',
+      description: 'Sistema de pedidos online',
+      site: 'https://sistemaacaineiro.netlify.app',
+      redirect_uri: 'https://sistemaacaineiro.netlify.app/admin/'
+    };
+    console.log('[PagBank] Criando aplicacao...');
+    const r = await fetch('https://api.pagseguro.com/oauth2/application', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${s.pagseguro_token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
     });
-  }).catch(err => { console.error('Failed to init DB:', err); process.exit(1); });
-}
+    const d = await r.json();
+    if (!r.ok) return res.status(400).json({ error: d.error_messages?.[0]?.description || d.message || 'Erro', detalhes: d });
+    console.log('[PagBank] Aplicacao criada:', JSON.stringify(d));
+    res.json(d);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
 
-// Netlify export
+// ─── Netlify export
 module.exports = app;
