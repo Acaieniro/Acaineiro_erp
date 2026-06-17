@@ -97,6 +97,12 @@ app.use('/app', express.static(WWW_PATH, {
   res.sendFile(path.join(WWW_PATH, 'index.html'));
 });
 
+let dbInit = false;
+app.use(async (req, res, next) => {
+  if (!dbInit) { dbInit = true; await initDB().catch(e => console.error('initDB error:', e.message)); }
+  next();
+});
+
 async function initDB() {
   await db.run(`CREATE TABLE IF NOT EXISTS categories (
     id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, slug TEXT NOT NULL UNIQUE,
