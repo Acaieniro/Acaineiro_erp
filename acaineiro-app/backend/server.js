@@ -410,7 +410,7 @@ app.delete('/api/banners/:id', adminAuth, async (req, res) => {
 // ─── COUPONS ───
 app.get('/api/coupons', async (req, res) => {
   const now = new Date().toISOString();
-  const coupons = await db.all("SELECT * FROM coupons WHERE active=1 AND (expires_at IS NULL OR expires_at > ?) AND (usage_limit=0 OR times_used < usage_limit) ORDER BY id ASC", now);
+  const coupons = await db.all("SELECT * FROM coupons WHERE active=1 AND (expires_at IS NULL OR expires_at > ?) ORDER BY id ASC", now);
   res.json(coupons);
 });
 
