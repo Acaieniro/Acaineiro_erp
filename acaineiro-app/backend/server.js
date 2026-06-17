@@ -215,7 +215,10 @@ async function initDB() {
     "ALTER TABLE loyalty_rewards ADD COLUMN reward_product_id INTEGER DEFAULT 0",
     "ALTER TABLE loyalty_rewards ADD COLUMN redeemed_at TEXT",
     "ALTER TABLE orders ADD COLUMN ps_charge_id TEXT",
-    "ALTER TABLE products ADD COLUMN sort_order INTEGER DEFAULT 0"
+    "ALTER TABLE products ADD COLUMN sort_order INTEGER DEFAULT 0",
+    "ALTER TABLE users ADD COLUMN cpf TEXT DEFAULT ''",
+    "ALTER TABLE users ADD COLUMN cep TEXT DEFAULT ''",
+    "ALTER TABLE users ADD COLUMN address_number TEXT DEFAULT ''"
   ]) {
     try { await db.run(sql); } catch (e) {}
   }
