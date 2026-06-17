@@ -1,0 +1,86 @@
+[16/06/2026, 14:17:32] === AÇAINEIRO - Serviço de Impressão ===
+[16/06/2026, 14:17:32] Turso conectado! 7 pedidos
+[16/06/2026, 14:17:33] Impressora: usb
+[16/06/2026, 14:17:33] Monitorando a cada 5s...
+[16/06/2026, 14:17:34] Imprimindo pedido #28 - Allison Rodrigo
+[16/06/2026, 14:17:34] Pedido #28 impresso!
+[16/06/2026, 14:20:14] Imprimindo pedido #29 - Allison Rodrigo
+[16/06/2026, 14:20:14] Pedido #29 impresso!
+[16/06/2026, 14:20:34] Imprimindo pedido #30 - Allison Rodrigo
+[16/06/2026, 14:20:34] Pedido #30 impresso!
+[16/06/2026, 14:20:54] Imprimindo pedido #31 - Allison Rodrigo
+[16/06/2026, 14:20:54] Pedido #31 impresso!
+[16/06/2026, 14:24:46] === AÇAINEIRO - Serviço de Impressão ===
+[16/06/2026, 14:24:47] Turso conectado! 10 pedidos
+[16/06/2026, 14:24:47] Impressora: usb
+[16/06/2026, 14:24:47] Monitorando a cada 5s...
+[16/06/2026, 14:26:03] Imprimindo pedido #32 - Allison Rodrigo
+[16/06/2026, 14:26:03] 
+[16/06/2026, 14:26:04] Pedido #32 impresso!
+[16/06/2026, 14:29:55] === AÇAINEIRO - Serviço de Impressão ===
+[16/06/2026, 14:29:56] Turso conectado! 11 pedidos
+[16/06/2026, 14:29:56] Impressora: usb
+[16/06/2026, 14:29:56] Monitorando a cada 5s...
+[16/06/2026, 14:29:56] API HTTP em http://127.0.0.1:3099/api/print/status
+[16/06/2026, 14:29:56] Admin local: http://127.0.0.1:3099/admin
+[16/06/2026, 14:38:33] Imprimindo pedido #33 - Allison Rodrigo
+[16/06/2026, 14:38:33] 
+[16/06/2026, 14:38:33] Pedido #33 impresso!
+[16/06/2026, 14:39:52] === AÇAINEIRO - Serviço de Impressão ===
+[16/06/2026, 14:39:53] Turso conectado! 12 pedidos
+[16/06/2026, 14:39:53] Impressora: usb
+[16/06/2026, 14:39:53] Monitorando a cada 5s...
+[16/06/2026, 14:39:53] API HTTP em http://127.0.0.1:3099/api/print/status
+[16/06/2026, 14:40:54] Imprimindo pedido #34 - Allison Rodrigo
+[16/06/2026, 14:40:54] 
+[16/06/2026, 14:40:55] Pedido #34 impresso!
+[16/06/2026, 14:41:29] Imprimindo pedido #34 - Allison Rodrigo
+[16/06/2026, 14:41:29]   ↪ Reimpressao (cooldown expirado)
+[16/06/2026, 14:41:30] Pedido #34 impresso!
+[16/06/2026, 14:42:06] Imprimindo pedido #34 - Allison Rodrigo
+[16/06/2026, 14:42:06]   ↪ Reimpressao (cooldown expirado)
+[16/06/2026, 14:42:06] Pedido #34 impresso!
+[16/06/2026, 14:42:39] Imprimindo pedido #34 - Allison Rodrigo
+[16/06/2026, 14:42:39]   ↪ Reimpressao (cooldown expirado)
+[16/06/2026, 14:42:40] Pedido #34 impresso!
+[16/06/2026, 14:43:14] Imprimindo pedido #34 - Allison Rodrigo
+[16/06/2026, 14:43:14]   ↪ Reimpressao (cooldown expirado)
+[16/06/2026, 14:43:15] Pedido #34 impresso!
+[16/06/2026, 14:43:31] === AÇAINEIRO - Serviço de Impressão ===
+[16/06/2026, 14:43:31] Turso conectado! 13 pedidos
+[16/06/2026, 14:43:32] Impressora: usb
+[16/06/2026, 14:43:32] Monitorando a cada 5s...
+[16/06/2026, 14:43:32] API HTTP em http://127.0.0.1:3099/api/print/status
+[16/06/2026, 14:43:33] Imprimindo pedido #34 - Allison Rodrigo
+[16/06/2026, 14:43:33] 
+[16/06/2026, 14:43:33] Pedido #34 impresso!
+[16/06/2026, 14:44:07] Imprimindo pedido #34 - Allison Rodrigo
+[16/06/2026, 14:44:07]   ↪ Reimpressao (cooldown expirado)
+[16/06/2026, 14:44:08] Pedido #34 impresso!
+[16/06/2026, 14:44:43] Imprimindo pedido #34 - Allison Rodrigo
+[16/06/2026, 14:44:43]   ↪ Reimpressao (cooldown expirado)
+[16/06/2026, 14:44:43] Pedido #34 impresso!
+[16/06/2026, 14:45:11] === AÇAINEIRO - Serviço de Impressão ===
+[16/06/2026, 14:45:11] Turso conectado! 13 pedidos
+[16/06/2026, 14:45:12] Impressora: usb
+[16/06/2026, 14:45:12] Monitorando a cada 5s...
+[16/06/2026, 14:45:12] API HTTP em http://127.0.0.1:3099/api/print/status
+[16/06/2026, 14:45:13] Imprimindo pedido #34 - Allison Rodrigo
+[16/06/2026, 14:45:13] Pedido #34 impresso!
+[16/06/2026, 15:12:13] === AÇAINEIRO - Serviço de Impressão ===
+[16/06/2026, 15:12:14] Turso conectado! 13 pedidos
+[16/06/2026, 15:12:14] Impressora: usb
+[16/06/2026, 15:12:14] Monitorando a cada 5s...
+[16/06/2026, 15:12:14] API HTTP em http://127.0.0.1:3099/api/print/status
+[16/06/2026, 15:12:15] Imprimindo pedido #34 - Allison Rodrigo
+[16/06/2026, 15:12:15] Pedido #34 impresso!
+[16/06/2026, 16:23:51] Imprimindo pedido #35 - Allison Rodrigo
+[16/06/2026, 16:23:52] Pedido #35 impresso!
+[16/06/2026, 16:48:29] Imprimindo pedido #36 - Allison Rodrigo
+[16/06/2026, 16:48:29] Pedido #36 impresso!
+[16/06/2026, 16:51:19] Imprimindo pedido #38 - Allison Rodrigo
+[16/06/2026, 16:51:20] Pedido #38 impresso!
+[16/06/2026, 17:56:25] Erro na consulta: fetch failed
+[16/06/2026, 17:56:53] Erro na consulta: fetch failed
+[16/06/2026, 20:03:16] Imprimindo pedido #39 - Allison Rodrigo
+[16/06/2026, 20:03:16] Pedido #39 impresso!

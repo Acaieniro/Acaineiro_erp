@@ -1,4 +1,3 @@
-const { usb } = require('usb');
 const net = require('net');
 const path = require('path');
 const fs = require('fs');
@@ -9,7 +8,7 @@ class EscPosBuilder {
     this.buffer = Buffer.from([]);
   }
 
-  init() { return this.add(Buffer.from([0x1B, 0x40])); }
+  init() { return this.add(Buffer.from([0x1B, 0x40, 0x1B, 0x74, 0x03])); } // ESC @ + ESC t 3 (PC860 Portuguese)
 
   align(n) { return this.add(Buffer.from([0x1B, 0x61, n])); }
 
@@ -21,8 +20,11 @@ class EscPosBuilder {
   text(t) { return this.add(Buffer.from(t, 'ascii')); }
 
   textBR(t) {
-    const latin1 = Buffer.from(t, 'latin1');
-    return this.add(latin1);
+    t = t.normalize('NFC').replace(/[Çç]/g, 'C').replace(/[ÀÁÂÃÄàáâãä]/g, 'A')
+      .replace(/[ÈÉÊËèéêë]/g, 'E').replace(/[ÌÍÎÏìíîï]/g, 'I')
+      .replace(/[ÒÓÔÕÖòóôõö]/g, 'O').replace(/[ÙÚÛÜùúûü]/g, 'U')
+      .replace(/[Ññ]/g, 'N').replace(/[Ýýÿ]/g, 'Y');
+    return this.add(Buffer.from(t, 'latin1'));
   }
 
   line(t) { 
@@ -228,6 +230,7 @@ class UsbPrinter {
   }
 
   async connect() {
+    const { usb } = eval('require')('usb');
     const dev = await usb.findDeviceByIds(this.vid, this.pid);
     if (!dev) throw new Error('Impressora USB não encontrada');
     this.device = dev;

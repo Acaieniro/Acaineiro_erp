@@ -1,0 +1,16 @@
+◇ injected env (6) from .env // tip: ⌁ auth for agents [www.vestauth.com]
+╔══════════════════════════════════════╗
+║   🖨️ AÇAINEIRO - SERVIÇO DE IMPRESSÃO ║
+╠══════════════════════════════════════╣
+║  Conectando ao Turso...              ║
+║  libsql://acaineiroerp-acaieniro.aws-us-east-1.turso.io ║
+╚══════════════════════════════════════╝
+[HTTP] Status: http://localhost:3099/status
+[HTTP] Teste:  http://localhost:3099/test
+[DB] Conectado! 4 pedidos encontrados.
+[Printer] USB printer connected (416:5011)
+[Printer] Modo: usb
+[Poll] Verificando novos pedidos a cada 5s
+
+[Print] Imprimindo pedido #26 - Allison Rodrigo
+[Print] Pedido #26 impresso!

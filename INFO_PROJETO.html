@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Açaineiro - Informações do Projeto</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f5f5f5; padding: 40px; color: #222; }
+  .container { max-width: 800px; margin: 0 auto; background: #fff; border-radius: 12px; padding: 40px; box-shadow: 0 2px 12px rgba(0,0,0,0.1); }
+  h1 { font-size: 28px; color: #6C3FB5; margin-bottom: 8px; }
+  .sub { color: #666; font-size: 14px; margin-bottom: 32px; }
+  h2 { font-size: 18px; color: #6C3FB5; border-bottom: 2px solid #eee; padding-bottom: 8px; margin: 28px 0 16px; }
+  h3 { font-size: 15px; color: #444; margin: 20px 0 8px; }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #eee; font-size: 14px; }
+  th { background: #f8f6fc; color: #6C3FB5; font-weight: 600; }
+  td { font-family: 'Consolas', 'Courier New', monospace; font-size: 13px; word-break: break-all; }
+  .url { color: #2563eb; text-decoration: none; }
+  .url:hover { text-decoration: underline; }
+  .badge { display: inline-block; background: #e8f5e9; color: #2e7d32; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+  .footer { margin-top: 32px; padding-top: 16px; border-top: 1px solid #eee; font-size: 12px; color: #999; text-align: center; }
+  @media print { body { padding: 0; background: #fff; } .container { box-shadow: none; padding: 20px; } }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>🖨️ Açaineiro</h1>
+<div class="sub">Informações do Projeto — <span class="badge">Atualizado em Junho/2026</span></div>
+
+<h2>🔗 URLs</h2>
+<table>
+  <tr><th>Serviço</th><th>URL</th></tr>
+  <tr><td>Painel Admin</td><td><a class="url" href="https://sistemaacaineiro.netlify.app/admin/" target="_blank">sistemaacaineiro.netlify.app/admin/</a></td></tr>
+  <tr><td>Site Cliente (PWA)</td><td><a class="url" href="https://sistemaacaineiro.netlify.app/" target="_blank">sistemaacaineiro.netlify.app</a></td></tr>
+  <tr><td>GitHub</td><td><a class="url" href="https://github.com/Acaieniro/Acaineiro_erp" target="_blank">github.com/Acaieniro/Acaineiro_erp</a></td></tr>
+  <tr><td>Netlify (Deploys)</td><td><a class="url" href="https://app.netlify.com/projects/sistemaacaineiro/overview" target="_blank">app.netlify.com/projects/sistemaacaineiro/overview</a></td></tr>
+  <tr><td>Turso (Banco)</td><td><a class="url" href="https://app.turso.tech/acaieniro?group=default" target="_blank">app.turso.tech/acaieniro?group=default</a></td></tr>
+</table>
+
+<h2>🔑 Acessos</h2>
+<table>
+  <tr><th>Serviço</th><th>Email</th><th>Senha</th></tr>
+  <tr><td>Todos (padrão)</td><td>acaineiro3@gmail.com</td><td rowspan="2" style="font-weight:600;color:#6C3FB5;">acaineiro@2026.</td></tr>
+  <tr><td>Netlify</td><td>acaineiro04@gmail.com</td></tr>
+</table>
+
+<h2>⚙️ Stack</h2>
+<table>
+  <tr><th>Componente</th><th>Tecnologia</th></tr>
+  <tr><td>Frontend Admin</td><td>HTML/CSS/JS puro (arquivo único)</td></tr>
+  <tr><td>Banco de Dados</td><td>Turso (SQLite cloud, libsql)</td></tr>
+  <tr><td>Imagens</td><td>Cloudinary</td></tr>
+  <tr><td>Hospedagem</td><td>Netlify (serverless functions)</td></tr>
+  <tr><td>Impressão</td><td>Print-agent local (Node.js + USB)</td></tr>
+  <tr><td>PWA Cliente</td><td>www/ (copiado no build)</td></tr>
+</table>
+
+<h2>📌 Observações</h2>
+<table>
+  <tr><td><strong>Admin Password</strong></td><td>Hardcoded no código como <code>acaineiro@2026.</code> — não precisa configurar env var</td></tr>
+  <tr><td><strong>Turso / Cloudinary</strong></td><td>Tokens estão no arquivo <code>.env</code> local (<code>backend/.env</code>) e configurados como env vars no Netlify</td></tr>
+  <tr><td><strong>Print-agent</strong></td><td>Pasta separada <code>acaineiro-print-service/</code> para instalar no PC da loja</td></tr>
+</table>
+
+<h2>🚀 Comandos</h2>
+<table>
+  <tr><th>Ação</th><th>Comando</th></tr>
+  <tr><td>Rodar local</td><td>npm start (na pasta backend/)</td></tr>
+  <tr><td>Deploy Netlify</td><td>npm run netlify (ou push no master)</td></tr>
+  <tr><td>Print-agent local</td><td>node print-agent.js (na pasta acaineiro-print-service/)</td></tr>
+</table>
+
+<div class="footer">Açaineiro © 2026</div>
+
+</div>
+</body>
+</html>

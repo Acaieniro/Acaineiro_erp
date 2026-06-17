@@ -250,8 +250,7 @@ async function initDB() {
     await db.run('INSERT INTO settings (key,value) VALUES (?,?)', 'store_address', 'R. Venezuela, 68 - Contagem, MG');
     await db.run('INSERT INTO settings (key,value) VALUES (?,?)', 'store_name', 'AÇAINEIRO');
     await db.run('INSERT INTO settings (key,value) VALUES (?,?)', 'pix_key', '');
-    await db.run('INSERT INTO settings (key,value) VALUES (?,?)', 'pagseguro_client_id', '');
-    await db.run('INSERT INTO settings (key,value) VALUES (?,?)', 'pagseguro_client_secret', '');
+    await db.run('INSERT INTO settings (key,value) VALUES (?,?)', 'pagseguro_token', '');
   }
 
   defaults: {
@@ -762,33 +761,42 @@ app.post('/api/orders/:id/cancel-customer', async (req, res) => {
 
 // ─── PAGSEGURO (PAGBANK) ───
 const PS_API = 'https://api.pagseguro.com';
-let psToken = null;
-
-async function psGetToken(s) {
-  if (!s.pagseguro_client_id || !s.pagseguro_client_secret) throw new Error('PagSeguro não configurado');
-  const r = await fetch(`${PS_API}/oauth2/token`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: `grant_type=client_credentials&client_id=${encodeURIComponent(s.pagseguro_client_id)}&client_secret=${encodeURIComponent(s.pagseguro_client_secret)}`
-  });
-  const d = await r.json();
-  if (!r.ok) throw new Error(d.error_description || d.error || 'Erro ao obter token PagSeguro');
-  psToken = d.access_token;
-  setTimeout(() => { psToken = null; }, (d.expires_in - 60) * 1000);
-  return psToken;
-}
 
 async function psFetch(path, opts = {}) {
   const s = await getSettings();
-  if (!psToken) await psGetToken(s);
-  const r = await fetch(`${PS_API}${path}`, {
+  if (!s.pagseguro_token) throw new Error('PagSeguro não configurado');
+  const url = `${PS_API}${path}`;
+  const tokenPreview = s.pagseguro_token.substring(0, 15) + '...';
+  console.log('[PagSeguro] requisicao para', url, 'token:', tokenPreview);
+  const r = await fetch(url, {
     ...opts,
-    headers: { 'Content-Type':'application/json', 'Authorization':`Bearer ${psToken}`, ...opts.headers }
+    headers: { 'Content-Type':'application/json', 'Authorization':`Bearer ${s.pagseguro_token}`, ...opts.headers }
   });
-  const d = await r.json();
-  if (!r.ok) throw new Error(d.error_messages?.[0]?.description || d.message || 'Erro PagSeguro');
+  let d;
+  try { d = await r.json(); } catch (e) { const t = await r.text(); d = { raw: t.substring(0,200) }; }
+  if (!r.ok) {
+    console.error('[PagSeguro] ERRO', r.status, r.statusText, JSON.stringify(d));
+    throw new Error(d.error_messages?.[0]?.description || d.message || d.error || `HTTP ${r.status} ${r.statusText}`);
+  }
+  console.log('[PagSeguro] sucesso', r.status, JSON.stringify(d).substring(0,100));
   return d;
 }
+
+// Debug: testar config PagSeguro
+app.get('/api/debug/pagseguro', async (req, res) => {
+  try {
+    const s = await getSettings();
+    const token = s.pagseguro_token;
+    if (!token) return res.json({ configured: false, msg: 'Token não configurado' });
+    const r = await fetch(`${PS_API}/orders?page=1&size=1`, {
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+    });
+    const d = await r.json();
+    res.json({ status: r.status, ok: r.ok, response: d, tokenPreview: token.substring(0,15)+'...' });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
 
 // Pix payment via PagSeguro
 app.post('/api/orders/:id/pay', async (req, res) => {
@@ -796,17 +804,34 @@ app.post('/api/orders/:id/pay', async (req, res) => {
   if (!order) return res.status(404).json({ error: 'Pedido não encontrado' });
   try {
     if (order.payment_method === 'pix') {
-      const charge = await psFetch('/charges', { method:'POST', body: JSON.stringify({
+      const items = JSON.parse(order.items_json || '[]');
+      const customer = { name: order.customer_name || 'Cliente', email: order.customer_email || 'cliente@email.com' };
+      if (order.customer_doc) customer.tax_id = order.customer_doc;
+      const body = {
         reference_id: `pedido${order.id}`,
-        description: `Pedido #${order.id} - ${order.customer_name}`,
-        amount: { value: Math.round(order.total * 100), currency: 'BRL' },
-        payment_method: { type: 'PIX', pix: { expiration: 3600 } }
-      })});
-      const pix = charge.payment_method.pix;
+        customer,
+        items: items.map((it, i) => ({
+          reference_id: String(it.id || i),
+          name: it.name || 'Item',
+          quantity: it.qty || 1,
+          unit_amount: Math.round((it.price || 0) * 100)
+        })),
+        charges: [{
+          reference_id: `cob${order.id}`,
+          description: `Pedido #${order.id}`,
+          amount: { value: Math.round(order.total * 100), currency: 'BRL' },
+          payment_method: { type: 'PIX', pix: { expiration: 3600 } }
+        }]
+      };
+      console.log('[PagSeguro] criando pedido Pix, body:', JSON.stringify(body).substring(0,200));
+      const charge = await psFetch('/orders', { method:'POST', body: JSON.stringify(body) });
+      const ch = charge.charges?.[0] || charge;
+      const pix = ch.payment_method?.pix || {};
       const qrCode = pix.qr_codes?.[0] || {};
-      const data = { qr_code: qrCode.text, qr_code_base64: qrCode.image, charge_id: charge.id };
-      await db.run('UPDATE orders SET ps_charge_id=?, payment_data_json=? WHERE id=?', charge.id, JSON.stringify(data), order.id);
-      res.json({ method:'pix', qr_code: qrCode.text, qr_code_base64: qrCode.image, charge_id: charge.id });
+      const chargeId = ch.id || charge.id;
+      const data = { qr_code: qrCode.text, qr_code_base64: qrCode.image, charge_id: chargeId };
+      if (chargeId) await db.run('UPDATE orders SET ps_charge_id=?, payment_data_json=? WHERE id=?', chargeId, JSON.stringify(data), order.id);
+      res.json({ method:'pix', qr_code: qrCode.text, qr_code_base64: qrCode.image, charge_id: chargeId });
     } else {
       res.status(400).json({ error: 'Método de pagamento não suportado' });
     }
