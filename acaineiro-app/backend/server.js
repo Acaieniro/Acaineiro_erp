@@ -193,6 +193,9 @@ async function initDB() {
   await db.run(`CREATE TABLE IF NOT EXISTS sync_ts (
     entity TEXT PRIMARY KEY, updated_at TEXT NOT NULL
   )`);
+  await db.run(`CREATE TABLE IF NOT EXISTS neighborhood_fees (
+    neighborhood TEXT PRIMARY KEY, fee REAL NOT NULL
+  )`);
 
   // Migrations - safe to run repeatedly
   for (const sql of [
@@ -624,6 +627,26 @@ app.get('/api/sync', async (req, res) => {
   res.json(map);
 });
 
+// ─── NEIGHBORHOOD FEES ───
+app.get('/api/neighborhood-fees', async (req, res) => {
+  const fees = await db.all('SELECT * FROM neighborhood_fees ORDER BY neighborhood');
+  res.json(fees);
+});
+
+app.post('/api/neighborhood-fees', adminAuth, async (req, res) => {
+  const { neighborhood, fee } = req.body;
+  if (!neighborhood || fee === undefined) return res.status(400).json({ error: 'Bairro e taxa obrigatórios' });
+  await db.run('INSERT OR REPLACE INTO neighborhood_fees (neighborhood, fee) VALUES (?,?)', neighborhood.trim(), parseFloat(fee) || 0);
+  await touchSync('settings');
+  res.json({ ok: true });
+});
+
+app.delete('/api/neighborhood-fees/:neighborhood', adminAuth, async (req, res) => {
+  await db.run('DELETE FROM neighborhood_fees WHERE neighborhood=?', req.params.neighborhood);
+  await touchSync('settings');
+  res.json({ ok: true });
+});
+
 // ─── SETTINGS ───
 app.get('/api/settings', async (req, res) => {
   res.json(await getSettings());
@@ -652,8 +675,14 @@ app.post('/api/orders', async (req, res) => {
 
   const isPickup = order_type === 'pickup';
   const settings = await getSettings();
-  let deliveryFee = isPickup ? 0 : parseFloat(settings.delivery_fee);
-  if (isNaN(deliveryFee)) deliveryFee = 5;
+  let deliveryFee = 0;
+  if (!isPickup) {
+    const nf = customer.neighborhood
+      ? await db.get('SELECT fee FROM neighborhood_fees WHERE neighborhood=?', customer.neighborhood.trim())
+      : null;
+    deliveryFee = nf ? nf.fee : parseFloat(settings.delivery_fee);
+    if (isNaN(deliveryFee)) deliveryFee = 5;
+  }
   const subtotal = items.reduce((s, i) => s + (i.price * i.qty), 0);
   let total = subtotal + deliveryFee;
   let appliedCoupon = null;

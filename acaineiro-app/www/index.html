@@ -223,7 +223,7 @@
           <div class="checkout-address-group">
             <div style="flex:1">
               <input type="text" id="ord-address" placeholder="Endereço (rua, número)" class="checkout-input">
-              <input type="text" id="ord-neighborhood" placeholder="Bairro" class="checkout-input">
+              <input type="text" id="ord-neighborhood" placeholder="Bairro" class="checkout-input" oninput="recalcCheckoutFee()">
             </div>
             <button type="button" id="btn-alt-endereco" class="checkout-alt-address" onclick="toggleAltAddress()" title="Usar outro endereço">✏️</button>
           </div>

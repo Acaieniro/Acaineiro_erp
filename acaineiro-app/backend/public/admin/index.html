@@ -760,6 +760,17 @@
           </div>
         </div>
 
+        <div class="card" style="border-left:4px solid #10B981;">
+          <h3 style="font-size:16px;margin-bottom:12px;color:var(--purple-dark);display:flex;align-items:center;gap:8px;">📍 Taxa por Bairro</h3>
+          <p style="font-size:12px;color:#888;margin-bottom:12px;">Se o bairro não estiver na lista, usa a <strong>Taxa de Entrega</strong> geral acima.</p>
+          <div id="neighborhood-fees-list" style="margin-bottom:12px;"></div>
+          <div style="display:flex;gap:8px;">
+            <input id="nf-neighborhood" placeholder="Bairro" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:13px;">
+            <input id="nf-fee" type="number" step="0.5" placeholder="R$" style="width:80px;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:13px;">
+            <button class="btn btn-primary" onclick="addNeighborhoodFee()" style="white-space:nowrap;">+</button>
+          </div>
+        </div>
+
         <div class="card" style="border-left:4px solid #06B6D4;">
           <h3 style="font-size:16px;margin-bottom:12px;color:var(--purple-dark);display:flex;align-items:center;gap:8px;">💠 Pagamento</h3>
           <div class="form-row">
@@ -1494,6 +1505,46 @@
         }
       } catch (e) {}
       if (typeof togglePrinterConfig === 'function') togglePrinterConfig();
+      loadNeighborhoodFees();
+    }
+
+    async function loadNeighborhoodFees() {
+      try {
+        const fees = await api('/api/neighborhood-fees');
+        const el = document.getElementById('neighborhood-fees-list');
+        if (!fees.length) { el.innerHTML = '<p style="font-size:12px;color:#aaa;">Nenhum bairro cadastrado</p>'; return; }
+        el.innerHTML = fees.map(f =>
+          `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #f0f0f0;">
+            <span style="font-size:13px;font-weight:600;">${f.neighborhood}</span>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="font-size:13px;color:var(--green);font-weight:700;">R$ ${f.fee.toFixed(2).replace('.',',')}</span>
+              <button class="btn btn-danger btn-sm" onclick="deleteNeighborhoodFee('${f.neighborhood}')" style="padding:2px 8px;font-size:11px;">✕</button>
+            </div>
+          </div>`
+        ).join('');
+      } catch (e) {}
+    }
+
+    async function addNeighborhoodFee() {
+      const neighborhood = document.getElementById('nf-neighborhood').value.trim();
+      const fee = parseFloat(document.getElementById('nf-fee').value);
+      if (!neighborhood || isNaN(fee)) { toast('Preencha bairro e taxa'); return; }
+      try {
+        await api('/api/neighborhood-fees', { method: 'POST', body: JSON.stringify({ neighborhood, fee }) });
+        document.getElementById('nf-neighborhood').value = '';
+        document.getElementById('nf-fee').value = '';
+        loadNeighborhoodFees();
+        toast(`✅ Taxa para ${neighborhood}: R$ ${fee.toFixed(2).replace('.',',')}`);
+      } catch (e) { toast('Erro ao salvar'); }
+    }
+
+    async function deleteNeighborhoodFee(neighborhood) {
+      if (!confirm(`Remover taxa de ${neighborhood}?`)) return;
+      try {
+        await api(`/api/neighborhood-fees/${encodeURIComponent(neighborhood)}`, { method: 'DELETE' });
+        loadNeighborhoodFees();
+        toast(`🗑️ Taxa de ${neighborhood} removida`);
+      } catch (e) { toast('Erro ao remover'); }
     }
 
     async function saveSettings() {

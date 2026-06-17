@@ -7,6 +7,13 @@ let settings = {};
 let socket = null;
 let currentTrackingId = null;
 let mpLoading = null;
+let neighborhoodFees = [];
+
+function deliveryFeeFor(neighborhood, isPickup) {
+  if (isPickup) return 0;
+  const nf = neighborhoodFees.find(f => f.neighborhood.toLowerCase() === (neighborhood || '').toLowerCase().trim());
+  return nf ? nf.fee : (parseFloat(settings.delivery_fee) || 0);
+}
 
 const API = {
   async get(url) {
@@ -176,6 +183,7 @@ async function loadApp() {
     allCategories = await API.get('/api/categories');
     allProducts = await API.get('/api/products');
     settings = await API.get('/api/settings');
+    neighborhoodFees = await API.get('/api/neighborhood-fees').catch(() => []);
     renderCategories();
     renderProducts('todos');
     renderPromos();
@@ -1141,7 +1149,9 @@ function hideCouponApplied() {
 }
 
 function updateCheckoutWithCoupon() {
-  const fee = parseFloat(settings.delivery_fee) || 0;
+  const isPickup = document.querySelector('input[name="order_type"]:checked')?.value === 'pickup';
+  const neighborhood = document.getElementById('ord-neighborhood')?.value || '';
+  const fee = deliveryFeeFor(neighborhood, isPickup);
   const subtotal = cart.reduce((s, i) => s + (i.price * i.qty), 0);
   const discount = window.activeCoupon ? window.activeCoupon.discount : 0;
   const total = subtotal + fee - discount;
@@ -1167,10 +1177,12 @@ function removeCoupon() {
 }
 
 function calcTroco() {
-  const fee = parseFloat(settings.delivery_fee) || 0;
-  const subtotal = cart.reduce((s, i) => s + (i.price * i.qty), 0);
-  const discount = window.activeCoupon ? window.activeCoupon.discount : 0;
-  const total = subtotal + fee - discount;
+    const isPickup = document.querySelector('input[name="order_type"]:checked')?.value === 'pickup';
+    const neighborhood = document.getElementById('ord-neighborhood')?.value || '';
+    const fee = deliveryFeeFor(neighborhood, isPickup);
+    const subtotal = cart.reduce((s, i) => s + (i.price * i.qty), 0);
+    const discount = window.activeCoupon ? window.activeCoupon.discount : 0;
+    const total = subtotal + fee - discount;
   const pago = parseFloat(document.getElementById('ord-troco').value) || 0;
   const result = document.getElementById('troco-result');
   if (pago > total) {
@@ -1193,10 +1205,16 @@ function toggleOrderType() {
   showCheckout();
 }
 
+function recalcCheckoutFee() {
+  const page = document.getElementById('page-checkout');
+  if (page && page.classList.contains('active')) showCheckout();
+}
+
 async function showCheckout() {
   if (!cart.length) { alert('Carrinho vazio!'); return; }
   const isPickup = document.querySelector('input[name="order_type"]:checked')?.value === 'pickup';
-  const fee = isPickup ? 0 : (parseFloat(settings.delivery_fee) || 0);
+  const neighborhood = document.getElementById('ord-neighborhood')?.value || '';
+  const fee = deliveryFeeFor(neighborhood, isPickup);
   const subtotal = cart.reduce((s, i) => s + (i.price * i.qty), 0);
   const discount = window.activeCoupon ? window.activeCoupon.discount : 0;
   const total = subtotal + fee - discount;
@@ -1305,7 +1323,8 @@ async function submitOrder() {
   if (!payment) { alert('Selecione a forma de pagamento!'); return; }
 
   let amount_paid = null, change_due = 0;
-  const fee = parseFloat(settings.delivery_fee) || 0;
+  const isPickup = document.querySelector('input[name="order_type"]:checked')?.value === 'pickup';
+  const fee = deliveryFeeFor(neighborhood, isPickup);
   const subtotal = cart.reduce((s, i) => s + (i.price * i.qty), 0);
   const discount = window.activeCoupon ? window.activeCoupon.discount : 0;
   const totalCalc = subtotal + fee - discount;
@@ -1898,11 +1917,14 @@ async function doBackgroundSync() {
     // Settings changed ─ update fees, loyalty, cupom do dia
     if (ts.settings && ts.settings !== syncTimestamps.settings) {
       settings = await API.get('/api/settings');
+      neighborhoodFees = await API.get('/api/neighborhood-fees').catch(() => []);
       if (page === 'home') {
         renderLoyalty();
         renderCupomDoDia();
       }
-      if (page === 'checkout' || page === 'cart') {
+      if (page === 'checkout') {
+        showCheckout();
+      } else if (page === 'cart') {
         updateCartUI();
       }
     }
