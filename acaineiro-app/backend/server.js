@@ -221,7 +221,8 @@ async function initDB() {
     "ALTER TABLE products ADD COLUMN sort_order INTEGER DEFAULT 0",
     "ALTER TABLE users ADD COLUMN cpf TEXT DEFAULT ''",
     "ALTER TABLE users ADD COLUMN cep TEXT DEFAULT ''",
-    "ALTER TABLE users ADD COLUMN address_number TEXT DEFAULT ''"
+    "ALTER TABLE users ADD COLUMN address_number TEXT DEFAULT ''",
+    "ALTER TABLE users ADD COLUMN email TEXT DEFAULT ''"
   ]) {
     try { await db.run(sql); } catch (e) {}
   }
@@ -1117,15 +1118,15 @@ function verifyPassword(password, stored) {
 }
 
 app.post('/api/auth/register', async (req, res) => {
-  const { name, phone, password, cpf, cep, address_number, address, neighborhood } = req.body;
+  const { name, phone, password, email, cpf, cep, address_number, address, neighborhood } = req.body;
   if (!name || !phone || !password) return res.status(400).json({ error: 'Nome, telefone e senha obrigatórios' });
   const existing = await db.get('SELECT id FROM users WHERE phone=?', phone);
   if (existing) return res.status(400).json({ error: 'Telefone já cadastrado' });
   const hash = hashPassword(password);
   const token = crypto.randomBytes(32).toString('hex');
-  const r = await db.run('INSERT INTO users (name,phone,cpf,cep,address_number,password_hash,address,neighborhood,auth_token) VALUES (?,?,?,?,?,?,?,?,?)',
-    name, phone, cpf || '', cep || '', address_number || '', hash, address || '', neighborhood || '', token);
-  res.json({ id: r.lastInsertRowid, name, phone, cpf: cpf || '', cep: cep || '', address_number: address_number || '', auth_token: token });
+  const r = await db.run('INSERT INTO users (name,phone,email,cpf,cep,address_number,password_hash,address,neighborhood,auth_token) VALUES (?,?,?,?,?,?,?,?,?,?)',
+    name, phone, email || '', cpf || '', cep || '', address_number || '', hash, address || '', neighborhood || '', token);
+  res.json({ id: r.lastInsertRowid, name, phone, email: email || '', cpf: cpf || '', cep: cep || '', address_number: address_number || '', auth_token: token });
 });
 
 app.post('/api/auth/login', async (req, res) => {
@@ -1135,15 +1136,15 @@ app.post('/api/auth/login', async (req, res) => {
   if (!user || !verifyPassword(password, user.password_hash)) return res.status(401).json({ error: 'Telefone ou senha incorretos' });
   const token = crypto.randomBytes(32).toString('hex');
   await db.run('UPDATE users SET auth_token=? WHERE id=?', token, user.id);
-  res.json({ id: user.id, name: user.name, phone: user.phone, cpf: user.cpf || '', cep: user.cep || '', address_number: user.address_number || '', address: user.address, neighborhood: user.neighborhood, auth_token: token });
+  res.json({ id: user.id, name: user.name, phone: user.phone, email: user.email || '', cpf: user.cpf || '', cep: user.cep || '', address_number: user.address_number || '', address: user.address, neighborhood: user.neighborhood, auth_token: token });
 });
 
 app.get('/api/auth/me', userAuth, (req, res) => { res.json(req.user); });
 
 app.put('/api/auth/profile', userAuth, async (req, res) => {
-  const { name, address, neighborhood, cpf, cep, address_number } = req.body;
-  await db.run('UPDATE users SET name=?,address=?,neighborhood=?,cpf=?,cep=?,address_number=? WHERE id=?',
-    name || req.user.name, address || '', neighborhood || '', cpf || '', cep || '', address_number || '', req.user.id);
+  const { name, address, neighborhood, cpf, cep, address_number, email } = req.body;
+  await db.run('UPDATE users SET name=?,address=?,neighborhood=?,cpf=?,cep=?,address_number=?,email=? WHERE id=?',
+    name || req.user.name, address || '', neighborhood || '', cpf || '', cep || '', address_number || '', email || '', req.user.id);
   res.json({ ok: true });
 });
 

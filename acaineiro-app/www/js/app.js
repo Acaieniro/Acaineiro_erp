@@ -1795,6 +1795,7 @@ async function loadAccount() {
     // Fill profile edit form
     document.getElementById('prof-name').value = user.name || '';
     document.getElementById('prof-phone').value = user.phone || '';
+    document.getElementById('prof-email').value = user.email || '';
     document.getElementById('prof-cpf').value = user.cpf || '';
     document.getElementById('prof-cep').value = user.cep || '';
     document.getElementById('prof-address_number').value = user.address_number || '';
@@ -1811,6 +1812,7 @@ async function loadAccount() {
 async function saveProfile() {
   const data = {
     name: document.getElementById('prof-name').value.trim(),
+    email: document.getElementById('prof-email').value.trim(),
     cpf: document.getElementById('prof-cpf').value.trim(),
     cep: document.getElementById('prof-cep').value.trim(),
     address_number: document.getElementById('prof-address_number').value.trim(),
@@ -1852,6 +1854,7 @@ async function loginUser() {
 async function registerUser() {
   const name = document.getElementById('reg-name').value.trim();
   const phone = document.getElementById('reg-phone').value.trim();
+  const email = document.getElementById('reg-email').value.trim();
   const cpf = document.getElementById('reg-cpf').value.trim();
   const pass = document.getElementById('reg-pass').value.trim();
   const address = document.getElementById('reg-address').value.trim();
@@ -1859,7 +1862,7 @@ async function registerUser() {
   const err = document.getElementById('auth-error');
   if (!name || !phone || !pass) { err.textContent = 'Nome, telefone e senha obrigatórios'; err.style.display = 'block'; return; }
   try {
-    const r = await fetch(`${API_URL}/api/auth/register`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name, phone, cpf, password: pass, address, neighborhood }) }).then(r => r.json());
+    const r = await fetch(`${API_URL}/api/auth/register`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name, phone, email, cpf, password: pass, address, neighborhood }) }).then(r => r.json());
     if (r.error) throw new Error(r.error);
     userToken = r.auth_token;
     userData = r;
