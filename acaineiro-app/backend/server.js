@@ -219,29 +219,34 @@ async function initDB() {
   ]) {
     try { await db.run(sql); } catch (e) {}
   }
+  // Remover categorias nao usadas
+  for (const slug of ['pratos', 'bebidas']) {
+    try {
+      const cat = await db.get('SELECT id FROM categories WHERE slug=?', slug);
+      if (cat) {
+        const extras = await db.get('SELECT id FROM categories WHERE slug=?', 'extras');
+        if (extras) await db.run('UPDATE products SET category_id=? WHERE category_id=?', extras.id, cat.id);
+        await db.run('DELETE FROM categories WHERE id=?', cat.id);
+      }
+    } catch (e) {}
+  }
 
   const catCount = await db.get('SELECT COUNT(*) as c FROM categories');
   if (catCount.c === 0) {
     await db.run('INSERT INTO categories (name, slug, icon, sort_order) VALUES (?,?,?,?)', 'Açaís', 'acai', '🥣', 1);
-    await db.run('INSERT INTO categories (name, slug, icon, sort_order) VALUES (?,?,?,?)', 'Pratos', 'pratos', '🍽️', 2);
-    await db.run('INSERT INTO categories (name, slug, icon, sort_order) VALUES (?,?,?,?)', 'Bebidas', 'bebidas', '🥤', 3);
-    await db.run('INSERT INTO categories (name, slug, icon, sort_order) VALUES (?,?,?,?)', 'Extras', 'extras', '➕', 4);
+    await db.run('INSERT INTO categories (name, slug, icon, sort_order) VALUES (?,?,?,?)', 'Vitaminas', 'vitaminas', '🥤', 2);
+    await db.run('INSERT INTO categories (name, slug, icon, sort_order) VALUES (?,?,?,?)', 'Extras', 'extras', '➕', 3);
     const inserts = [
       [1,'Açaí Tradicional','Açaí puro com banana, granola e mel',15],
       [1,'Açaí Premium','Açaí com leite em pó, banana, granola, morango e mel',20],
       [1,'Açaí Power','Açaí com whey, banana, pasta de amendoim, granola e mel',25],
       [1,'Açaí Tropical','Açaí com abacaxi, coco ralado, granola e leite condensado',22],
       [1,'Açaí Fit','Açaí zero açúcar com chia, banana, morango e granola integral',23],
-      [2,'Tamboril','Peixe tamboril preparado com tempero especial da casa',35],
-      [2,'Virado à Mineira','Arroz, feijão, couve, torresmo, ovo e bisteca',28],
-      [2,'Filé Americain','Filé mignon ao molho especial com fritas e arroz',38],
-      [2,'Sima','Prato típico mineiro com acompanhamentos',30],
-      [3,'Suco Natural','Laranja, limão, maracujá, acerola ou abacaxi',8],
-      [3,'Vitamina de Frutas','Banana, morango, mamão ou abacate',12],
-      [3,'Refrigerante Lata','Coca-Cola, Guaraná, Fanta ou Sprite',6],
-      [4,'Nutella Extra','Porção extra de Nutella',5],
-      [4,'Granola Extra','Porção extra de granola crocante',3],
-      [4,'Frutas Extras','Banana, morango, abacaxi ou kiwi',3],
+      [2,'Vitamina Tradicional','Vitamina de frutas natural',12],
+      [2,'Vitamina Gourmet','Vitamina especial com frutas selecionadas',18],
+      [3,'Nutella Extra','Porção extra de Nutella',5],
+      [3,'Granola Extra','Porção extra de granola crocante',3],
+      [3,'Frutas Extras','Banana, morango, abacaxi ou kiwi',3],
     ];
     for (const p of inserts) {
       await db.run('INSERT INTO products (category_id, name, description, price) VALUES (?,?,?,?)', ...p);
