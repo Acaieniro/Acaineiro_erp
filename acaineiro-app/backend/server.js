@@ -480,7 +480,9 @@ app.get('/api/loyalty/:phone', async (req, res) => {
     LEFT JOIN products p ON lr.reward_product_id = p.id
     WHERE lr.phone=? AND (c.times_used IS NULL OR c.times_used < c.usage_limit) AND lr.redeemed_at IS NULL
     ORDER BY lr.created_at DESC`, phone);
-  res.json({ count, rewards });
+  const settings = await getSettings();
+  const goal = parseInt(settings.loyalty_goal) || 10;
+  res.json({ count, goal, rewards });
 });
 
 app.post('/api/loyalty/redeem-product', async (req, res) => {
@@ -692,52 +694,59 @@ app.put('/api/orders/:id/confirm', async (req, res) => {
   const updated = await db.get('SELECT * FROM orders WHERE id=?', req.params.id);
   if (updated) updated.items = JSON.parse(updated.items_json);
 
-  // Loyalty: increment count for this customer
-  const phone = updated.customer_phone;
-  if (phone) {
-    let loyalty = await db.get('SELECT * FROM loyalty WHERE phone=?', phone);
-    if (!loyalty) {
-      await db.run('INSERT INTO loyalty (phone, count) VALUES (?, 1)', phone);
-      loyalty = { count: 1 };
-    } else {
-      await db.run('UPDATE loyalty SET count = count + 1 WHERE phone=?', phone);
-      loyalty.count += 1;
-    }
-    const settings = await getSettings();
-    const loyaltyGoal = parseInt(settings.loyalty_goal) || 10;
-    if (loyalty.count >= loyaltyGoal) {
-      const rewardProductId = parseInt(settings.loyalty_reward_product_id) || 0;
-      if (rewardProductId > 0) {
-        const product = await db.get('SELECT * FROM products WHERE id=?', rewardProductId);
-        if (product) {
-          const couponCode = `FIDEL-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
-          await db.run('INSERT INTO coupons (code, discount_percent, discount_value, description, image_url, active, usage_limit) VALUES (?,0,?,?,?,1,1)',
-            couponCode, product.price, `🎉 Grátis: ${product.name}`, product.image_url || '');
-          await db.run('INSERT INTO loyalty_rewards (phone, coupon_code, reward_product_id) VALUES (?,?,?)', phone, couponCode, rewardProductId);
-          await db.run('UPDATE loyalty SET count = 0 WHERE phone=?', phone);
-          updated.loyaltyReward = { code: couponCode, value: product.price, type: 'product', desc: `Grátis: ${product.name}`, product_id: rewardProductId, product_name: product.name, image_url: product.image_url || '' };
-          updated.loyaltyGoal = loyaltyGoal;
-        }
+  // Loyalty: increment count for this customer (try/catch p/ nao quebrar confirmacao)
+  try {
+    const phone = updated.customer_phone;
+    if (phone) {
+      let loyalty = await db.get('SELECT * FROM loyalty WHERE phone=?', phone);
+      if (!loyalty) {
+        await db.run('INSERT INTO loyalty (phone, count) VALUES (?, 1)', phone);
+        loyalty = { count: 1 };
       } else {
-        const rewardType = settings.loyalty_reward_type || 'fixed';
-        const rewardValue = parseFloat(settings.loyalty_reward_value || settings.loyalty_reward || 20);
-        const rewardDesc = settings.loyalty_reward_desc || (rewardType === 'percent' ? `${rewardValue}% de desconto no próximo pedido` : `R$ ${rewardValue.toFixed(2).replace('.',',')} de desconto`);
-        const rewardImage = settings.loyalty_reward_image || '';
-        const couponCode = `FIDEL-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
-        if (rewardType === 'percent') {
-          await db.run('INSERT INTO coupons (code, discount_percent, discount_value, description, image_url, active, usage_limit) VALUES (?,?,0,?,?,1,1)',
-            couponCode, rewardValue, `🎉 ${rewardDesc}`, rewardImage);
-        } else {
-          await db.run('INSERT INTO coupons (code, discount_percent, discount_value, description, image_url, active, usage_limit) VALUES (?,0,?,?,?,1,1)',
-            couponCode, rewardValue, `🎉 ${rewardDesc}`, rewardImage);
-        }
-        await db.run('INSERT INTO loyalty_rewards (phone, coupon_code) VALUES (?,?)', phone, couponCode);
-        await db.run('UPDATE loyalty SET count = 0 WHERE phone=?', phone);
-        updated.loyaltyReward = { code: couponCode, value: rewardValue, type: rewardType, desc: rewardDesc, image_url: rewardImage };
-        updated.loyaltyGoal = loyaltyGoal;
+        await db.run('UPDATE loyalty SET count = count + 1 WHERE phone=?', phone);
+        loyalty.count += 1;
       }
+      const settings = await getSettings();
+      const loyaltyGoal = parseInt(settings.loyalty_goal) || 10;
+      updated.loyaltyGoal = loyaltyGoal;
+      if (loyalty.count >= loyaltyGoal) {
+        const rewardProductId = parseInt(settings.loyalty_reward_product_id) || 0;
+        let rewardCreated = false;
+        if (rewardProductId > 0) {
+          const product = await db.get('SELECT * FROM products WHERE id=?', rewardProductId);
+          if (product) {
+            const couponCode = `FIDEL-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+            await db.run('INSERT INTO coupons (code, discount_percent, discount_value, description, image_url, active, usage_limit) VALUES (?,0,?,?,?,1,1)',
+              couponCode, product.price, `🎉 Grátis: ${product.name}`, product.image_url || '');
+            await db.run('INSERT INTO loyalty_rewards (phone, coupon_code, reward_product_id) VALUES (?,?,?)', phone, couponCode, rewardProductId);
+            updated.loyaltyReward = { code: couponCode, value: product.price, type: 'product', desc: `Grátis: ${product.name}`, product_id: rewardProductId, product_name: product.name, image_url: product.image_url || '' };
+            rewardCreated = true;
+          }
+        }
+        if (!rewardCreated) {
+          const rewardType = settings.loyalty_reward_type || 'fixed';
+          const rewardValue = parseFloat(settings.loyalty_reward_value || settings.loyalty_reward || 20);
+          const rewardDesc = settings.loyalty_reward_desc || (rewardType === 'percent' ? `${rewardValue}% de desconto no próximo pedido` : `R$ ${rewardValue.toFixed(2).replace('.',',')} de desconto`);
+          const rewardImage = settings.loyalty_reward_image || '';
+          const couponCode = `FIDEL-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+          if (rewardType === 'percent') {
+            await db.run('INSERT INTO coupons (code, discount_percent, discount_value, description, image_url, active, usage_limit) VALUES (?,?,0,?,?,1,1)',
+              couponCode, rewardValue, `🎉 ${rewardDesc}`, rewardImage);
+          } else {
+            await db.run('INSERT INTO coupons (code, discount_percent, discount_value, description, image_url, active, usage_limit) VALUES (?,0,?,?,?,1,1)',
+              couponCode, rewardValue, `🎉 ${rewardDesc}`, rewardImage);
+          }
+          await db.run('INSERT INTO loyalty_rewards (phone, coupon_code) VALUES (?,?)', phone, couponCode);
+          updated.loyaltyReward = { code: couponCode, value: rewardValue, type: rewardType, desc: rewardDesc, image_url: rewardImage };
+        }
+        // Sempre resetar count quando a meta for atingida
+        await db.run('UPDATE loyalty SET count = 0 WHERE phone=?', phone);
+        loyalty.count = 0;
+      }
+      updated.loyaltyCount = loyalty.count;
     }
-    updated.loyaltyCount = loyalty.count >= loyaltyGoal ? 0 : loyalty.count;
+  } catch (e) {
+    console.error('Erro no loyalty:', e);
   }
 
   if (io) { io.to('admin').emit('order-status', updated); io.to(`order-${updated.id}`).emit('status-update', updated); }

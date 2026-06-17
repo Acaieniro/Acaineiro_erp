@@ -501,36 +501,31 @@ function irResgatarCupom() {
   redirectToCheckout = true;
   navigateTo('cupons');
 }
-async function resgatarProdutoFidelidade(couponCode, productId) {
+async function resgatarProdutoFidelidade(dataset) {
+  const { code, productId, productName, productPrice } = dataset;
   try {
-    await API.post('/api/loyalty/redeem-product', { coupon_code: couponCode });
+    await API.post('/api/loyalty/redeem-product', { coupon_code: code });
   } catch (e) {}
-  try {
-    const products = await API.get('/api/products/all');
-    const product = products.find(p => p.id == productId);
-    if (product) {
-      const existing = cart.find(i => i.id === product.id && i.is_reward);
-      if (!existing) {
-        cart.push({
-          id: product.id,
-          name: `🏆 ${product.name} (Fidelidade)`,
-          price: 0,
-          qty: 1,
-          icon: product.icon || '🎁',
-          is_reward: true,
-          original_price: product.price
-        });
-        updateCartUI();
-      }
-      localStorage.removeItem('acaineiro_last_reward');
-      navigateTo('checkout');
-      showCheckout();
-      const toast = document.getElementById('toast');
-      if (toast) { toast.textContent = `🎉 ${product.name} grátis adicionado ao carrinho!`; toast.style.display = 'block'; toast.style.opacity = '1'; setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.style.display = 'none', 300); }, 3000); }
-    }
-  } catch (e) { alert('Erro ao resgatar recompensa'); }
+  const existing = cart.find(i => i.id == productId && i.is_reward);
+  if (!existing) {
+    cart.push({
+      id: parseInt(productId),
+      name: `🏆 ${productName} (Fidelidade)`,
+      price: 0,
+      qty: 1,
+      icon: '🎁',
+      is_reward: true,
+      original_price: parseFloat(productPrice) || 0
+    });
+    updateCartUI();
+  }
+  localStorage.removeItem('acaineiro_last_reward');
+  navigateTo('checkout');
+  showCheckout();
+  const toast = document.getElementById('toast');
+  if (toast) { toast.textContent = `🎉 ${productName} grátis adicionado ao carrinho!`; toast.style.display = 'block'; toast.style.opacity = '1'; setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.style.display = 'none', 300); }, 3000); }
 }
-function resgatarCupom(code, discountPercent, discountValue) {
+async function resgatarCupom(code, discountPercent, discountValue) {
   cupomResgatado = code;
   localStorage.setItem('cupomResgatado', code);
   const pct = parseFloat(discountPercent || 0);
@@ -546,6 +541,10 @@ function resgatarCupom(code, discountPercent, discountValue) {
       setTimeout(() => toast.style.display = 'none', 300);
     }, 3000);
   }
+  // Marcar como resgatado na API para nao aparecer mais na lista
+  try {
+    await API.post('/api/loyalty/redeem-product', { coupon_code: code });
+  } catch (e) {}
   // Update all buttons on cupons page
   document.querySelectorAll('.coupon-page-btn').forEach(btn => {
     if (btn.dataset.code === code) {
@@ -643,7 +642,7 @@ async function renderCouponsPage() {
                   <div class="coupon-page-code" style="color:#16a34a;">🏆 ${r.product_name || 'Produto Grátis'}</div>
                   <div class="coupon-page-desc">${r.description || ''}</div>
                   <div style="font-size:13px;color:#16a34a;font-weight:700;margin:4px 0;">R$ 0,00 • Grátis</div>
-                  <button class="coupon-page-btn resgatar" data-code="${r.coupon_code}" data-product-id="${r.reward_product_id}" onclick="resgatarProdutoFidelidade(this.dataset.code, this.dataset.productId)">🎁 Resgatar Agora</button>
+                  <button class="coupon-page-btn resgatar" data-code="${r.coupon_code}" data-product-id="${r.reward_product_id}" data-product-name="${r.product_name || ''}" data-product-price="${r.product_price || 0}" onclick="resgatarProdutoFidelidade(this.dataset)">🎁 Resgatar Agora</button>
                 </div>
               </div>`;
             }
@@ -782,19 +781,20 @@ function renderLoyalty() {
   }
 
   API.get(`/api/loyalty/${encodeURIComponent(phone)}`).then(data => {
-    const total = Math.min(data.count, 10);
+    const goal = data.goal || 10;
+    const total = Math.min(data.count, goal);
     stampsEl.innerHTML = '';
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < goal; i++) {
       const stamp = document.createElement('div');
       stamp.className = `loyalty-stamp ${i < total ? 'filled' : ''}`;
       stampsEl.appendChild(stamp);
     }
-    if (fillEl) fillEl.style.width = `${(total / 10) * 100}%`;
+    if (fillEl) fillEl.style.width = `${(total / goal) * 100}%`;
     if (countEl) {
-      if (data.count >= 10) {
+      if (data.count >= goal) {
         countEl.textContent = '🎉 Parabéns! Você ganhou um cupom! Confira em Cupons';
       } else {
-        countEl.textContent = `${data.count} de 10 compras`;
+        countEl.textContent = `${data.count} de ${goal} compras`;
       }
     }
   }).catch(() => {
