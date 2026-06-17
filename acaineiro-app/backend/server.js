@@ -230,6 +230,8 @@ async function initDB() {
       }
     } catch (e) {}
   }
+  // Atribuir sort_order para produtos existentes baseado no id
+  try { await db.run('UPDATE products SET sort_order = id WHERE sort_order = 0'); } catch (e) {}
 
   const catCount = await db.get('SELECT COUNT(*) as c FROM categories');
   if (catCount.c === 0) {
