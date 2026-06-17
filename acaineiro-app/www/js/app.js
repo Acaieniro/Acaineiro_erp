@@ -674,6 +674,8 @@ async function renderCouponsPage() {
     }
     html += coupons.map(c => {
       const jaResgatado = cupomResgatado === c.code;
+      const esgotado = c.exhausted === 1 || c.exhausted === true;
+      const disabled = jaResgatado || esgotado;
       const hasImg = !!c.image_url;
       const cp = parseFloat(c.discount_percent || 0);
       const cv = parseFloat(c.discount_value || 0);
@@ -688,7 +690,7 @@ async function renderCouponsPage() {
             ${c.code !== nome ? `<div style="font-size:11px;color:#aaa;margin-bottom:2px;">${c.code}</div>` : ''}
             ${c.description ? `<div class="coupon-page-desc">${c.description}</div>` : ''}
             <div class="coupon-page-discount">${cl} de desconto</div>
-            <button class="coupon-page-btn ${jaResgatado ? 'resgatado' : 'resgatar'}" data-code="${c.code}" data-percent="${c.discount_percent || 0}" data-value="${c.discount_value || 0}" ${jaResgatado ? 'disabled' : ''} onclick="resgatarCupom(this.dataset.code, this.dataset.percent, this.dataset.value)">${jaResgatado ? '✅ Resgatado' : '🏷️ Resgatar Cupom'}</button>
+            <button class="coupon-page-btn ${disabled ? 'resgatado' : 'resgatar'}" data-code="${c.code}" data-percent="${c.discount_percent || 0}" data-value="${c.discount_value || 0}" ${disabled ? 'disabled' : ''} onclick="resgatarCupom(this.dataset.code, this.dataset.percent, this.dataset.value)">${esgotado ? '🔒 Esgotado' : jaResgatado ? '✅ Resgatado' : '🏷️ Resgatar Cupom'}</button>
           </div>
         </div>
       `;
