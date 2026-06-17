@@ -1637,8 +1637,6 @@ function navigateTo(page) {
     setTimeout(renderLoyalty, 300);
   }
 
-  if (page === 'home') { startHomeAutoRefresh(); } else { stopHomeAutoRefresh(); }
-
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -1882,30 +1880,90 @@ function logoutUser() {
 }
 
 
-let homeRefreshTimer = null;
+// ─── BACKGROUND SYNC ───
+let syncTimestamps = {};
+let backgroundSyncTimer = null;
+let backgroundSyncing = false;
 
-function startHomeAutoRefresh() {
-  stopHomeAutoRefresh();
-  homeRefreshTimer = setInterval(async () => {
-    if (currentPage !== 'home') return;
-    try {
+async function doBackgroundSync() {
+  if (backgroundSyncing) return;
+  backgroundSyncing = true;
+  const page = currentPage;
+  try {
+    const ts = await API.get('/api/sync');
+
+    // Settings changed ─ update fees, loyalty, cupom do dia
+    if (ts.settings && ts.settings !== syncTimestamps.settings) {
       settings = await API.get('/api/settings');
-      allProducts = await API.get('/api/products');
-      const banners = await API.get('/api/banners');
-      renderBanners(banners);
-      await refreshProducts();
-      renderFeatured();
-      renderTopProducts();
-      renderCombos();
-      renderFlashProducts();
-      renderLoyalty();
-      renderCupomDoDia();
-    } catch (e) {}
-  }, 30000);
+      if (page === 'home') {
+        renderLoyalty();
+        renderCupomDoDia();
+      }
+      if (page === 'checkout' || page === 'cart') {
+        updateCartUI();
+      }
+    }
+
+    // Products changed ─ update all product-dependent sections
+    if (ts.products && ts.products !== syncTimestamps.products) {
+      const newProducts = await API.get('/api/products');
+      allProducts = newProducts;
+      if (page === 'home') {
+        renderFeatured();
+        renderTopProducts();
+        renderFlashProducts();
+        renderCupomDoDia();
+      }
+      if (page === 'menu' || page === 'promos') {
+        const scrollY = window.scrollY;
+        renderProducts(currentCategory);
+        if (page === 'promos') renderPromos();
+        window.scrollTo(0, scrollY);
+      }
+    }
+
+    // Banners changed
+    if (ts.banners && ts.banners !== syncTimestamps.banners) {
+      if (page === 'home') {
+        loadBanners();
+      }
+    }
+
+    // Coupons changed
+    if (ts.coupons && ts.coupons !== syncTimestamps.coupons) {
+      if (page === 'home') renderCupomDoDia();
+      if (page === 'cupons') renderCouponsPage();
+    }
+
+    // Combos changed (skip if combo modal open)
+    if (ts.combos && ts.combos !== syncTimestamps.combos) {
+      if (page === 'home') {
+        const modal = document.getElementById('combo-modal');
+        if (modal && modal.classList.contains('hidden')) {
+          renderCombos();
+        }
+      }
+    }
+
+    syncTimestamps = ts;
+  } catch (e) {
+    // silent background sync
+  } finally {
+    backgroundSyncing = false;
+  }
 }
 
-function stopHomeAutoRefresh() {
-  if (homeRefreshTimer) { clearInterval(homeRefreshTimer); homeRefreshTimer = null; }
+function startBackgroundSync() {
+  stopBackgroundSync();
+  API.get('/api/sync').then(ts => { syncTimestamps = ts; }).catch(() => {});
+  backgroundSyncTimer = setInterval(doBackgroundSync, 7000);
+}
+
+function stopBackgroundSync() {
+  if (backgroundSyncTimer) {
+    clearInterval(backgroundSyncTimer);
+    backgroundSyncTimer = null;
+  }
 }
 
 function refreshAllData() {
@@ -1930,7 +1988,7 @@ document.addEventListener('DOMContentLoaded', () => {
   loadAccount();
   const saved = JSON.parse(localStorage.getItem('acaineiro_orders') || '[]');
   if (saved.length > 0) connectSocket();
-  startHomeAutoRefresh();
+  startBackgroundSync();
 
   // Check if returning from MP payment
   const params = new URLSearchParams(window.location.search);
@@ -1938,13 +1996,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const orderId = params.get('order');
     if (orderId) openTracking(parseInt(orderId));
   }
+});
 
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) {
-    stopHomeAutoRefresh();
+    stopBackgroundSync();
   } else {
-    startHomeAutoRefresh();
+    startBackgroundSync();
     refreshAllData();
   }
-});
 });

@@ -190,6 +190,9 @@ async function initDB() {
     id INTEGER PRIMARY KEY AUTOINCREMENT, phone TEXT NOT NULL,
     coupon_code TEXT NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
+  await db.run(`CREATE TABLE IF NOT EXISTS sync_ts (
+    entity TEXT PRIMARY KEY, updated_at TEXT NOT NULL
+  )`);
 
   // Migrations - safe to run repeatedly
   for (const sql of [
@@ -302,6 +305,10 @@ async function getSettings() {
   return s;
 }
 
+async function touchSync(entity) {
+  await db.run('INSERT OR REPLACE INTO sync_ts (entity, updated_at) VALUES (?,?)', entity, new Date().toISOString());
+}
+
 if (io) {
   io.on('connection', (socket) => {
     socket.on('join-admin', () => { socket.join('admin'); });
@@ -353,6 +360,7 @@ app.post('/api/products', adminAuth, async (req, res) => {
   const { category_id, name, description, price, promo_price, icon, image, sort_order } = req.body;
   const r = await db.run('INSERT INTO products (category_id,name,description,price,promo_price,icon,image,sort_order) VALUES (?,?,?,?,?,?,?,?)',
     category_id, name, description || '', price || 0, promo_price || null, icon || '🥣', image || '', sort_order || 0);
+  await touchSync('products');
   res.json({ id: r.lastInsertRowid });
 });
 
@@ -360,6 +368,7 @@ app.put('/api/products/:id', adminAuth, async (req, res) => {
   const { name, description, price, promo_price, has_promo, icon, image, category_id, active, sort_order } = req.body;
   await db.run('UPDATE products SET name=?,description=?,price=?,promo_price=?,has_promo=?,icon=?,image=?,category_id=?,active=?,sort_order=? WHERE id=?',
     name, description, price, promo_price, has_promo ? 1 : 0, icon, image || '', category_id, active ? 1 : 0, sort_order || 0, req.params.id);
+  await touchSync('products');
   res.json({ ok: true });
 });
 
@@ -367,6 +376,7 @@ app.delete('/api/products/:id', adminAuth, async (req, res) => {
   const id = req.params.id;
   await db.run('DELETE FROM combo_items WHERE product_id=?', id);
   await db.run('DELETE FROM products WHERE id=?', id);
+  await touchSync('products');
   res.json({ ok: true });
 });
 
@@ -374,6 +384,7 @@ app.post('/api/products/:id/promo', adminAuth, async (req, res) => {
   const { promo_price } = req.body;
   const has = promo_price > 0 ? 1 : 0;
   await db.run('UPDATE products SET promo_price=?, has_promo=? WHERE id=?', promo_price || null, has, req.params.id);
+  await touchSync('products');
   res.json({ ok: true });
 });
 
@@ -392,6 +403,7 @@ app.post('/api/banners', adminAuth, async (req, res) => {
   const { title, subtitle, button_text, button_action, image_url, bg_color, emoji, icon_url, sort_order } = req.body;
   const r = await db.run('INSERT INTO banners (title,subtitle,button_text,button_action,image_url,bg_color,emoji,icon_url,sort_order) VALUES (?,?,?,?,?,?,?,?,?)',
     title || 'Banner', subtitle || '', button_text || '', button_action || 'menu', image_url || '', bg_color || '#7C3AED', emoji || '', icon_url || '', sort_order || 0);
+  await touchSync('banners');
   res.json({ id: r.lastInsertRowid });
 });
 
@@ -399,11 +411,13 @@ app.put('/api/banners/:id', adminAuth, async (req, res) => {
   const { title, subtitle, button_text, button_action, image_url, bg_color, active, sort_order, emoji, icon_url } = req.body;
   await db.run('UPDATE banners SET title=?,subtitle=?,button_text=?,button_action=?,image_url=?,bg_color=?,emoji=?,icon_url=?,active=?,sort_order=? WHERE id=?',
     title, subtitle || '', button_text || '', button_action || 'menu', image_url || '', bg_color || '#7C3AED', emoji || '', icon_url || '', active ? 1 : 0, sort_order || 0, req.params.id);
+  await touchSync('banners');
   res.json({ ok: true });
 });
 
 app.delete('/api/banners/:id', adminAuth, async (req, res) => {
   await db.run('DELETE FROM banners WHERE id=?', req.params.id);
+  await touchSync('banners');
   res.json({ ok: true });
 });
 
@@ -426,6 +440,7 @@ app.post('/api/coupons', adminAuth, async (req, res) => {
   if (existing) return res.status(400).json({ error: 'Código já existe' });
   const r = await db.run('INSERT INTO coupons (code,name,discount_percent,discount_value,min_value,description,image_url,usage_limit,expires_at) VALUES (?,?,?,?,?,?,?,?,?)',
     code.toUpperCase(), name || '', discount_percent || 0, discount_value || 0, min_value || 0, description || '', image_url || '', usage_limit || 0, expires_at || null);
+  await touchSync('coupons');
   res.json({ id: r.lastInsertRowid });
 });
 
@@ -433,6 +448,7 @@ app.put('/api/coupons/:id', adminAuth, async (req, res) => {
   const { code, name, discount_percent, discount_value, min_value, description, image_url, active, usage_limit, expires_at } = req.body;
   await db.run('UPDATE coupons SET code=?,name=?,discount_percent=?,discount_value=?,min_value=?,description=?,image_url=?,active=?,usage_limit=?,expires_at=? WHERE id=?',
     (code || '').toUpperCase(), name || '', discount_percent || 0, discount_value || 0, min_value || 0, description || '', image_url || '', active ? 1 : 0, usage_limit || 0, expires_at || null, req.params.id);
+  await touchSync('coupons');
   res.json({ ok: true });
 });
 
@@ -441,6 +457,7 @@ app.delete('/api/coupons/:id', adminAuth, async (req, res) => {
   const c = await db.get('SELECT code FROM coupons WHERE id=?', id);
   if (c) await db.run('DELETE FROM loyalty_rewards WHERE coupon_code=?', c.code);
   await db.run('DELETE FROM coupons WHERE id=?', id);
+  await touchSync('coupons');
   res.json({ ok: true });
 });
 
@@ -546,6 +563,7 @@ app.post('/api/combos', adminAuth, async (req, res) => {
   const { name, description, price, old_price, icon, sort_order } = req.body;
   const r = await db.run('INSERT INTO combos (name,description,price,old_price,icon,sort_order) VALUES (?,?,?,?,?,?)',
     name, description || '', price || 0, old_price || null, icon || '🎯', sort_order || 0);
+  await touchSync('combos');
   res.json({ id: r.lastInsertRowid });
 });
 
@@ -553,6 +571,7 @@ app.put('/api/combos/:id', adminAuth, async (req, res) => {
   const { name, description, price, old_price, icon, active, sort_order } = req.body;
   await db.run('UPDATE combos SET name=?,description=?,price=?,old_price=?,icon=?,active=?,sort_order=? WHERE id=?',
     name, description || '', price, old_price || null, icon || '🎯', active ? 1 : 0, sort_order || 0, req.params.id);
+  await touchSync('combos');
   res.json({ ok: true });
 });
 
@@ -560,6 +579,7 @@ app.delete('/api/combos/:id', adminAuth, async (req, res) => {
   const id = req.params.id;
   await db.run('DELETE FROM combo_items WHERE combo_id=?', id);
   await db.run('DELETE FROM combos WHERE id=?', id);
+  await touchSync('combos');
   res.json({ ok: true });
 });
 
@@ -568,11 +588,13 @@ app.post('/api/combos/:id/items', adminAuth, async (req, res) => {
   const existing = await db.get('SELECT id FROM combo_items WHERE combo_id=? AND product_id=?', req.params.id, product_id);
   if (existing) return res.status(400).json({ error: 'Produto já está no combo' });
   const r = await db.run('INSERT INTO combo_items (combo_id, product_id) VALUES (?,?)', req.params.id, product_id);
+  await touchSync('combos');
   res.json({ id: r.lastInsertRowid });
 });
 
 app.delete('/api/combos/:id/items/:itemId', adminAuth, async (req, res) => {
   await db.run('DELETE FROM combo_items WHERE id=? AND combo_id=?', req.params.itemId, req.params.id);
+  await touchSync('combos');
   res.json({ ok: true });
 });
 
@@ -593,6 +615,14 @@ app.get('/api/products/top', async (req, res) => {
   res.json(topProducts);
 });
 
+// ─── SYNC ───
+app.get('/api/sync', async (req, res) => {
+  const rows = await db.all('SELECT * FROM sync_ts');
+  const map = {};
+  for (const r of rows) map[r.entity] = r.updated_at;
+  res.json(map);
+});
+
 // ─── SETTINGS ───
 app.get('/api/settings', async (req, res) => {
   res.json(await getSettings());
@@ -610,6 +640,7 @@ app.put('/api/settings', adminAuth, async (req, res) => {
     d.setHours(d.getHours() + hours, d.getMinutes() + minutes, 0, 0);
     await db.run('INSERT OR REPLACE INTO settings (key, value) VALUES (?,?)', 'flash_end_time', d.toISOString());
   }
+  await touchSync('settings');
   res.json({ ok: true });
 });
 
