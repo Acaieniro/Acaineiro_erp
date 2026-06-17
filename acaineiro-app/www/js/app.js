@@ -1,4 +1,5 @@
 const API_URL = `https://sistemaacaineiro.netlify.app`;
+const APP_VERSION = '3'; // incremente a cada deploy que muda app.js
 let cart = [];
 let currentCategory = 'todos';
 let allProducts = [];
@@ -180,6 +181,13 @@ function updateSavedOrder(order) {
 
 async function loadApp() {
   try {
+    const cachedVersion = localStorage.getItem('app_version');
+    if (cachedVersion && cachedVersion !== APP_VERSION) {
+      localStorage.clear();
+      window.location.href = window.location.href.split('?')[0] + '?_=' + Date.now();
+      return;
+    }
+    localStorage.setItem('app_version', APP_VERSION);
     allCategories = await API.get('/api/categories');
     allProducts = await API.get('/api/products');
     settings = await API.get('/api/settings');
