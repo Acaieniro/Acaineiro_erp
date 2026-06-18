@@ -14,6 +14,7 @@ let freightTimer = null;
 
 function deliveryFeeFor(neighborhood, isPickup) {
   if (isPickup) return 0;
+  if (window.activeCoupon?.free_shipping) return 0;
   if (lastFreight !== null) return lastFreight.fee;
   const nf = neighborhoodFees.find(f => f.neighborhood.toLowerCase() === (neighborhood || '').toLowerCase().trim());
   return nf ? nf.fee : (parseFloat(settings.delivery_fee) || 0);
