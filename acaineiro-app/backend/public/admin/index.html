@@ -753,10 +753,14 @@
           <div class="form-row">
             <div class="form-group"><label>Endereço</label><input id="set-store_address"></div>
             <div class="form-group" style="max-width:120px"><label>Taxa de Entrega (R$)</label><input id="set-delivery_fee" type="number" step="0.5"></div>
+            <div class="form-group" style="max-width:120px"><label>Taxa por KM (R$)</label><input id="set-delivery_rate_per_km" type="number" step="0.5" placeholder="2"></div>
           </div>
           <div class="form-row">
             <div class="form-group" style="max-width:120px"><label>Abre</label><input id="set-store_open" type="time"></div>
             <div class="form-group" style="max-width:120px"><label>Fecha</label><input id="set-store_close" type="time"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>Chave LocationIQ (frete por KM)</label><input id="set-locationiq_key" placeholder="pk.xxxxxxxxxxxxxxxxxxxxxxxx" style="font-family:monospace;font-size:12px;"></div>
           </div>
         </div>
 
@@ -1548,7 +1552,7 @@
     }
 
     async function saveSettings() {
-      const keys = ['store_name','store_phone','store_address','delivery_fee','store_open','store_close','pix_key','pagseguro_token','pagseguro_client_id','pagseguro_client_secret','loyalty_goal','loyalty_reward_type','loyalty_reward_value','loyalty_reward_desc','loyalty_reward_product_id','printer_mode','printer_ip','printer_port','auto_print'];
+      const keys = ['store_name','store_phone','store_address','delivery_fee','delivery_rate_per_km','locationiq_key','store_open','store_close','pix_key','pagseguro_token','pagseguro_client_id','pagseguro_client_secret','loyalty_goal','loyalty_reward_type','loyalty_reward_value','loyalty_reward_desc','loyalty_reward_product_id','printer_mode','printer_ip','printer_port','auto_print'];
       const data = {};
       for (const k of keys) {
         const el = document.getElementById('set-' + k);

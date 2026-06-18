@@ -9,11 +9,27 @@ let socket = null;
 let currentTrackingId = null;
 let mpLoading = null;
 let neighborhoodFees = [];
+let lastFreight = null;
+let freightTimer = null;
 
 function deliveryFeeFor(neighborhood, isPickup) {
   if (isPickup) return 0;
+  if (lastFreight !== null) return lastFreight.fee;
   const nf = neighborhoodFees.find(f => f.neighborhood.toLowerCase() === (neighborhood || '').toLowerCase().trim());
   return nf ? nf.fee : (parseFloat(settings.delivery_fee) || 0);
+}
+
+async function calcFreight() {
+  const isPickup = document.querySelector('input[name="order_type"]:checked')?.value === 'pickup';
+  if (isPickup) { lastFreight = { distance_km: 0, fee: 0 }; return; }
+  const addr = document.getElementById('ord-address')?.value || '';
+  const hood = document.getElementById('ord-neighborhood')?.value || '';
+  const full = [addr, hood].filter(Boolean).join(', ');
+  if (!full) { lastFreight = null; return; }
+  try {
+    const r = await API.post('/api/calc-freight', { address: full });
+    if (r.fee !== undefined) lastFreight = r;
+  } catch (e) { lastFreight = null; }
 }
 
 const API = {
@@ -1215,7 +1231,13 @@ function toggleOrderType() {
 
 function recalcCheckoutFee() {
   const page = document.getElementById('page-checkout');
-  if (page && page.classList.contains('active')) showCheckout();
+  if (page && page.classList.contains('active')) {
+    if (freightTimer) clearTimeout(freightTimer);
+    freightTimer = setTimeout(async () => {
+      await calcFreight();
+      showCheckout();
+    }, 600);
+  }
 }
 
 async function showCheckout() {
@@ -1247,7 +1269,15 @@ async function showCheckout() {
   }
 
   const feeEl = document.getElementById('checkout-fee');
-  if (feeEl) feeEl.textContent = isPickup ? 'Grátis (retirada)' : `R$ ${fee.toFixed(2).replace('.',',')}`;
+  if (feeEl) {
+    if (isPickup) {
+      feeEl.textContent = 'Grátis (retirada)';
+    } else if (lastFreight && lastFreight.distance_km > 0) {
+      feeEl.textContent = `R$ ${fee.toFixed(2).replace('.',',')} (${lastFreight.distance_km.toFixed(1).replace('.',',')} km)`;
+    } else {
+      feeEl.textContent = `R$ ${fee.toFixed(2).replace('.',',')}`;
+    }
+  }
   document.getElementById('checkout-total').textContent = `R$ ${total.toFixed(2).replace('.',',')}`;
 
   fillCheckoutData();

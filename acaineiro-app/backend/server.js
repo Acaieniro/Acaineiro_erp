@@ -275,6 +275,8 @@ async function initDB() {
     await db.run('INSERT INTO settings (key,value) VALUES (?,?)', 'store_name', 'AÇAINEIRO');
     await db.run('INSERT INTO settings (key,value) VALUES (?,?)', 'pix_key', '');
     await db.run('INSERT INTO settings (key,value) VALUES (?,?)', 'pagseguro_token', '');
+    await db.run('INSERT INTO settings (key,value) VALUES (?,?)', 'locationiq_key', '');
+    await db.run('INSERT INTO settings (key,value) VALUES (?,?)', 'delivery_rate_per_km', '2');
   }
 
   defaults: {
@@ -668,6 +670,55 @@ app.put('/api/settings', adminAuth, async (req, res) => {
   res.json({ ok: true });
 });
 
+// ─── FREIGHT ───
+async function calcDistance(address, settings) {
+  const key = settings.locationiq_key;
+  if (!key) return null;
+  const storeAddr = settings.store_address;
+  if (!storeAddr) return null;
+  if (!address) return null;
+  try {
+    const https = require('https');
+    // Geocode store address (cache em settings.store_lat, store_lng)
+    let slat = settings.store_lat, slon = settings.store_lng;
+    if (!slat || !slon) {
+      const sGeo = await new Promise((resolve, reject) => {
+        https.get(`https://us1.locationiq.com/v1/search?key=${key}&q=${encodeURIComponent(storeAddr)}&format=json&limit=1`, r => { let d=''; r.on('data',c=>d+=c); r.on('end',()=>resolve(JSON.parse(d))); r.on('error',reject); });
+      });
+      if (sGeo && sGeo.length) {
+        slat = sGeo[0].lat; slon = sGeo[0].lon;
+        await db.run('INSERT OR REPLACE INTO settings (key,value) VALUES (?,?)', 'store_lat', slat);
+        await db.run('INSERT OR REPLACE INTO settings (key,value) VALUES (?,?)', 'store_lng', slon);
+      } else return null;
+    }
+    // Geocode customer address
+    const cGeo = await new Promise((resolve, reject) => {
+      https.get(`https://us1.locationiq.com/v1/search?key=${key}&q=${encodeURIComponent(address)}&format=json&limit=1`, r => { let d=''; r.on('data',c=>d+=c); r.on('end',()=>resolve(JSON.parse(d))); r.on('error',reject); });
+    });
+    if (!cGeo || !cGeo.length) return null;
+    const clat = cGeo[0].lat, clon = cGeo[0].lon;
+    // Get driving route
+    const route = await new Promise((resolve, reject) => {
+      https.get(`https://us1.locationiq.com/v1/directions/driving/${slon},${slat};${clon},${clat}?key=${key}&overview=false&steps=false`, r => { let d=''; r.on('data',c=>d+=c); r.on('end',()=>resolve(JSON.parse(d))); r.on('error',reject); });
+    });
+    if (!route || !route.routes || !route.routes.length) return null;
+    const distMeters = route.routes[0].legs?.[0]?.distance || 0;
+    return distMeters / 1000; // km
+  } catch (e) { return null; }
+}
+
+app.post('/api/calc-freight', async (req, res) => {
+  const { address } = req.body;
+  if (!address) return res.status(400).json({ error: 'Endereço obrigatório' });
+  const settings = await getSettings();
+  const rate = parseFloat(settings.delivery_rate_per_km) || 0;
+  if (!rate) return res.json({ distance_km: 0, fee: 0, note: 'Taxa por km não configurada' });
+  const distKm = await calcDistance(address, settings);
+  if (distKm === null) return res.json({ distance_km: 0, fee: 0, note: 'Não foi possível calcular distância' });
+  const fee = Math.round(distKm * rate * 100) / 100;
+  res.json({ distance_km: Math.round(distKm * 10) / 10, fee });
+});
+
 // ─── ORDERS ───
 app.post('/api/orders', async (req, res) => {
   const { customer, items, payment_method, payment_method_detail, notes, amount_paid, change_due, coupon_code, order_type } = req.body;
@@ -677,11 +728,19 @@ app.post('/api/orders', async (req, res) => {
   const settings = await getSettings();
   let deliveryFee = 0;
   if (!isPickup) {
-    const nf = customer.neighborhood
-      ? await db.get('SELECT fee FROM neighborhood_fees WHERE neighborhood=?', customer.neighborhood.trim())
-      : null;
-    deliveryFee = nf ? nf.fee : parseFloat(settings.delivery_fee);
-    if (isNaN(deliveryFee)) deliveryFee = 5;
+    const rate = parseFloat(settings.delivery_rate_per_km) || 0;
+    if (rate > 0) {
+      const addr = [customer.address, customer.neighborhood].filter(Boolean).join(', ');
+      const distKm = await calcDistance(addr, settings);
+      if (distKm !== null) deliveryFee = Math.round(distKm * rate * 100) / 100;
+    }
+    if (!deliveryFee) {
+      const nf = customer.neighborhood
+        ? await db.get('SELECT fee FROM neighborhood_fees WHERE neighborhood=?', customer.neighborhood.trim())
+        : null;
+      deliveryFee = nf ? nf.fee : parseFloat(settings.delivery_fee);
+      if (isNaN(deliveryFee)) deliveryFee = 5;
+    }
   }
   const subtotal = items.reduce((s, i) => s + (i.price * i.qty), 0);
   let total = subtotal + deliveryFee;
