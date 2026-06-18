@@ -1282,6 +1282,28 @@ async function showCheckout() {
 
   fillCheckoutData();
 
+  // Trigger freight calc if address is pre-filled
+  const addr = document.getElementById('ord-address')?.value || '';
+  const hood = document.getElementById('ord-neighborhood')?.value || '';
+  if ((addr || hood) && lastFreight === null) {
+    await calcFreight();
+    // Re-render fee/total with the calculated freight
+    const neighbor = document.getElementById('ord-neighborhood')?.value || '';
+    const fee2 = deliveryFeeFor(neighbor, isPickup);
+    const discount2 = window.activeCoupon ? window.activeCoupon.discount : 0;
+    const total2 = subtotal + fee2 - discount2;
+    if (feeEl) {
+      if (isPickup) {
+        feeEl.textContent = 'Grátis (retirada)';
+      } else if (lastFreight && lastFreight.distance_km > 0) {
+        feeEl.textContent = `R$ ${fee2.toFixed(2).replace('.',',')} (${lastFreight.distance_km.toFixed(1).replace('.',',')} km)`;
+      } else {
+        feeEl.textContent = `R$ ${fee2.toFixed(2).replace('.',',')}`;
+      }
+    }
+    document.getElementById('checkout-total').textContent = `R$ ${total2.toFixed(2).replace('.',',')}`;
+  }
+
   // Restore coupon if active
   if (window.activeCoupon) {
     showCouponApplied(window.activeCoupon.code, window.activeCoupon.discount_percent, window.activeCoupon.discount);
