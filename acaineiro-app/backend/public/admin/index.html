@@ -938,7 +938,7 @@
         <div class="r-line"></div>
         <table>
           <tr class="r-total"><td>Total</td><td style="text-align:right;">R$ ${parseFloat(o.total).toFixed(2).replace('.',',')}</td></tr>
-          ${parseFloat(o.delivery_fee) > 0 ? `<tr><td style="font-size:10px;">Frete</td><td style="text-align:right;font-size:10px;">R$ ${parseFloat(o.delivery_fee).toFixed(2).replace('.',',')}</td></tr>` : ''}
+          ${parseFloat(o.delivery_fee) > 0 ? `<tr><td style="font-size:10px;">Taxa de Entrega</td><td style="text-align:right;font-size:10px;">R$ ${parseFloat(o.delivery_fee).toFixed(2).replace('.',',')}</td></tr>` : ''}
         </table>
         <div class="r-pay">${payLabels[o.payment_method] || o.payment_method}</div>
         ${o.coupon_code ? `<div class="r-pay" style="font-size:10px;">🏷️ Cupom: ${esc(o.coupon_code)}</div>` : ''}
@@ -1158,7 +1158,7 @@
           ${i.is_combo && i.combo_items ? `<div style="font-size:11px;color:#888;padding-left:18px;margin-top:-2px;padding-bottom:4px;">📦 ${i.combo_items.map(x => x.name).join(', ')}</div>` : ''}
           ${i.is_combo && i.items ? `<div style="font-size:11px;color:#888;padding-left:18px;margin-top:-2px;padding-bottom:4px;">📦 ${i.items.map(x => x.name).join(', ')}</div>` : ''}
         `).join('');
-        const statusLabels = { 'novo':'🆕 Novo', 'preparando':'👨‍🍳 Preparando', 'entregando':'🚚 Saiu pra entrega', 'entregue':'✅ Aguardando confirmação', 'finalizado':'🎉 Finalizado', 'cancelado':'❌ Cancelado' };
+        const statusLabels = { 'novo':'🆕 Novo', 'preparando':'👨‍🍳 Preparando', 'entregando':'🏍️ Saiu pra entrega', 'entregue':'✅ Aguardando confirmação', 'finalizado':'🎉 Finalizado', 'cancelado':'❌ Cancelado' };
         const paymentLabels = { 'pix':'💠 Pix', 'cartao':'💳 Cartão', 'dinheiro':'💵 Dinheiro' };
         const payStatusLabels = { 'pendente':'⏳ Pendente', 'pago':'✅ Pago', 'reembolsado':'🔄 Reembolsado' };
         return `
@@ -1190,14 +1190,14 @@
                   <span>Total</span>
                   <span>R$ ${parseFloat(o.total).toFixed(2).replace('.',',')}</span>
                 </div>
-                ${parseFloat(o.delivery_fee) > 0 ? `<div style="font-size:12px;color:#888;text-align:right;">frete R$ ${parseFloat(o.delivery_fee).toFixed(2).replace('.',',')}</div>` : ''}
+                ${parseFloat(o.delivery_fee) > 0 ? `<div style="font-size:12px;color:#888;text-align:right;">Taxa de Entrega R$ ${parseFloat(o.delivery_fee).toFixed(2).replace('.',',')}</div>` : ''}
               </div>
             </div>
 
             <div style="display:flex;gap:6px;flex-wrap:wrap;padding-top:10px;border-top:1px solid rgba(0,0,0,0.06);">
               ${o.status === 'novo' && o.payment_method === 'pix' && o.payment_status !== 'pago' ? `<span style="padding:6px 14px;background:#FEF3C7;color:#92400E;border-radius:8px;font-size:12px;font-weight:600;">⏳ Aguardando pagamento Pix</span>` : ''}
               ${o.status === 'novo' && (o.payment_method !== 'pix' || o.payment_status === 'pago') ? `<button class="btn-accept" onclick="updateStatus(${o.id},'preparando')">✅ Aceitar</button>` : ''}
-              ${o.status === 'preparando' ? `<button class="btn-deliver" onclick="updateStatus(${o.id},'entregando')">🚚 Saiu pra entrega</button>` : ''}
+              ${o.status === 'preparando' ? `<button class="btn-deliver" onclick="updateStatus(${o.id},'entregando')">🏍️ Saiu pra entrega</button>` : ''}
               ${o.status === 'entregando' ? `<button class="btn-done" onclick="updateStatus(${o.id},'entregue')">✅ Entregue</button>` : ''}
               ${o.status !== 'entregue' && o.status !== 'finalizado' && o.status !== 'cancelado' ? `<button class="btn-cancel" onclick="cancelOrder(${o.id},'${o.payment_status || ''}')">❌ Cancelar</button>` : ''}
               ${o.status === 'cancelado' && o.payment_status === 'pago' ? `<button class="btn" style="background:var(--yellow);color:var(--white-solid);" onclick="refundOrder(${o.id})">🔄 Reembolsar</button>` : ''}
@@ -1235,13 +1235,13 @@
         document.getElementById('stats-grid').innerHTML = `
           <div class="stat-card"><div class="num">${counts.novos}</div><div class="label">🆕 Novos</div></div>
           <div class="stat-card"><div class="num">${counts.preparando}</div><div class="label">👨‍🍳 Preparando</div></div>
-          <div class="stat-card"><div class="num">${counts.enviado}</div><div class="label">🚚 Saiu pra entrega</div></div>
+          <div class="stat-card"><div class="num">${counts.enviado}</div><div class="label">🏍️ Saiu pra entrega</div></div>
           <div class="stat-card"><div class="num">${counts.finalizados || 0}</div><div class="label">🎉 Finalizados</div></div>
           <div class="stat-card"><div class="num">${counts.total}</div><div class="label">📦 Total</div></div>
         `;
 
         const filters = ['todos','novo','preparando','entregando','entregue','finalizado','cancelado'];
-        const filterLabels = {'todos':'Todos','novo':'🆕 Novos','preparando':'👨‍🍳 Preparando','entregando':'🚚 Saiu pra entrega','entregue':'✅ Aguardando','finalizado':'🎉 Finalizados','cancelado':'❌ Cancelados'};
+        const filterLabels = {'todos':'Todos','novo':'🆕 Novos','preparando':'👨‍🍳 Preparando','entregando':'🏍️ Saiu pra entrega','entregue':'✅ Aguardando','finalizado':'🎉 Finalizados','cancelado':'❌ Cancelados'};
         document.getElementById('order-filters').innerHTML = filters.map(f =>
           `<button class="${f === filterStatus ? 'active' : ''}" onclick="setFilter('${f}')">${filterLabels[f]}</button>`
         ).join('');

@@ -270,7 +270,7 @@ function renderBanners(banners) {
   const defaultBanners = [
     { title: 'O verdadeiro<br><strong>açaí mineiro</strong>', subtitle: 'Ingredientes selecionados, sabor inesquecível', button_text: 'Ver Cardápio →', button_action: 'menu', emoji: '🥣', bg_color: '#7C3AED' },
     { title: 'Promoções<br><strong>imperdíveis</strong>', subtitle: 'Ofertas especiais por tempo limitado', button_text: 'Ver Promos →', button_action: 'promos', emoji: '🔥', bg_color: '#DB2777' },
-    { title: 'Delivery<br><strong>rápido e fácil</strong>', subtitle: 'Pediu, chegou! Entrega em Contagem', button_text: 'Pedir Agora →', button_action: 'cart', emoji: '🚚', bg_color: '#059669' }
+    { title: 'Delivery<br><strong>rápido e fácil</strong>', subtitle: 'Pediu, chegou! Entrega em Contagem', button_text: 'Pedir Agora →', button_action: 'cart', emoji: '🏍️', bg_color: '#059669' }
   ];
 
   const slides = banners.length ? banners : defaultBanners;
@@ -1272,8 +1272,6 @@ async function showCheckout() {
   if (feeEl) {
     if (isPickup) {
       feeEl.textContent = 'Grátis (retirada)';
-    } else if (lastFreight && lastFreight.distance_km > 0) {
-      feeEl.textContent = `R$ ${fee.toFixed(2).replace('.',',')} (${lastFreight.distance_km.toFixed(1).replace('.',',')} km)`;
     } else {
       feeEl.textContent = `R$ ${fee.toFixed(2).replace('.',',')}`;
     }
@@ -1295,9 +1293,9 @@ async function showCheckout() {
     if (feeEl) {
       if (isPickup) {
         feeEl.textContent = 'Grátis (retirada)';
-      } else if (lastFreight && lastFreight.distance_km > 0) {
-        feeEl.textContent = `R$ ${fee2.toFixed(2).replace('.',',')} (${lastFreight.distance_km.toFixed(1).replace('.',',')} km)`;
       } else {
+        feeEl.textContent = `R$ ${fee2.toFixed(2).replace('.',',')}`;
+      }
         feeEl.textContent = `R$ ${fee2.toFixed(2).replace('.',',')}`;
       }
     }
@@ -1486,7 +1484,7 @@ function openTracking(orderId) {
   navigateTo('tracking');
 }
 
-const statusLabels = { 'novo':'🆕 Novo', 'preparando':'👨‍🍳 Preparando', 'entregando':'🚚 Saiu pra entrega', 'entregue':'✅ Entregue', 'finalizado':'🎉 Finalizado', 'cancelado':'❌ Cancelado' };
+const statusLabels = { 'novo':'🆕 Novo', 'preparando':'👨‍🍳 Preparando', 'entregando':'🏍️ Saiu pra entrega', 'entregue':'✅ Entregue', 'finalizado':'🎉 Finalizado', 'cancelado':'❌ Cancelado' };
 const paymentLabels = { 'pix':'💠 Pix', 'cartao':'💳 Cartão', 'dinheiro':'💵 Dinheiro' };
 const stepOrder = ['novo', 'preparando', 'entregando', 'entregue', 'finalizado'];
 

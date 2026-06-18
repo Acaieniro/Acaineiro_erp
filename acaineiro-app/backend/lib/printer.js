@@ -141,7 +141,7 @@ class EscPosBuilder {
     this.bold(false);
     this.align(0);
     if (parseFloat(order.delivery_fee) > 0) {
-      this.line(`Frete: R$ ${parseFloat(order.delivery_fee).toFixed(2).replace('.', ',')}`);
+      this.line(`Taxa de Entrega: R$ ${parseFloat(order.delivery_fee).toFixed(2).replace('.', ',')}`);
     }
     if (order.coupon_code) {
       this.line(`Cupom: ${order.coupon_code}`);
