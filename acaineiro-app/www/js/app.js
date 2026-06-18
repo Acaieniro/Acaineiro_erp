@@ -1296,8 +1296,6 @@ async function showCheckout() {
       } else {
         feeEl.textContent = `R$ ${fee2.toFixed(2).replace('.',',')}`;
       }
-        feeEl.textContent = `R$ ${fee2.toFixed(2).replace('.',',')}`;
-      }
     }
     document.getElementById('checkout-total').textContent = `R$ ${total2.toFixed(2).replace('.',',')}`;
   }
