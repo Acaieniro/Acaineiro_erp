@@ -602,6 +602,10 @@
               <label>Desconto (%)</label>
               <input id="cp-discount" type="number" min="1" max="100" placeholder="5">
             </div>
+            <div class="form-group" style="flex:0 0 auto;">
+              <label>Frete Grátis</label>
+              <label class="toggle" style="display:block;margin-top:4px;"><input type="checkbox" id="cp-free_shipping"><span class="slider"></span></label>
+            </div>
             <div class="form-group" style="max-width:150px">
               <label>Valor Mínimo (R$)</label>
               <input id="cp-min_value" type="number" step="0.5" placeholder="0,00">
@@ -1852,7 +1856,7 @@
                 <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
                   <strong style="color:var(--purple);font-size:14px;">${esc(c.name || c.code)}</strong>
                   <span style="font-size:11px;color:#aaa;">${esc(c.code)}</span>
-                  <span class="promo-badge">-${c.discount_percent}%</span>
+                  ${c.free_shipping ? '<span class="promo-badge" style="background:#10B981;">🚚 Frete Grátis</span>' : `<span class="promo-badge">-${c.discount_percent}%</span>`}
                   ${c.active ? '' : '<span style="font-size:11px;color:#999;">(inativo)</span>'}
                   <span style="font-size:12px;color:#888;">${usos} usos</span>
                   ${c.min_value > 0 ? `<span style="font-size:12px;color:#888;">Mín: R$ ${parseFloat(c.min_value).toFixed(2).replace('.',',')}</span>` : ''}
@@ -1887,6 +1891,7 @@
       if (preview) { preview.src = c.image_url || ''; preview.style.display = c.image_url ? 'block' : 'none'; }
       document.getElementById('cp-usage_limit').value = c.usage_limit || 0;
       document.getElementById('cp-active').value = c.active ? '1' : '0';
+      document.getElementById('cp-free_shipping').checked = !!c.free_shipping;
       if (c.expires_at) {
         const d = new Date(c.expires_at);
         document.getElementById('cp-expires_at').value = d.toISOString().slice(0, 16);
@@ -1908,10 +1913,10 @@
         image_url: document.getElementById('cp-image_url').value,
         usage_limit: parseInt(document.getElementById('cp-usage_limit').value) || 0,
         active: parseInt(document.getElementById('cp-active').value),
+        free_shipping: document.getElementById('cp-free_shipping').checked,
         expires_at: expiresAt ? new Date(expiresAt).toISOString() : null,
       };
       if (!data.code) { toast('Código do cupom obrigatório!'); return; }
-      if (!data.discount_percent || data.discount_percent < 1) { toast('Informe o desconto em %!'); return; }
       try {
         if (id) {
           await api(`/api/coupons/${id}`, { method: 'PUT', body: JSON.stringify(data) });
@@ -1937,6 +1942,7 @@
       document.getElementById('cp-image_url').value = '';
       document.getElementById('cp-usage_limit').value = '0';
       document.getElementById('cp-active').value = '1';
+      document.getElementById('cp-free_shipping').checked = false;
       document.getElementById('cp-expires_at').value = '';
       document.getElementById('cp-code').focus();
     }

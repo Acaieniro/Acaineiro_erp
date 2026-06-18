@@ -231,7 +231,8 @@ async function initDB() {
     "ALTER TABLE users ADD COLUMN cpf TEXT DEFAULT ''",
     "ALTER TABLE users ADD COLUMN cep TEXT DEFAULT ''",
     "ALTER TABLE users ADD COLUMN address_number TEXT DEFAULT ''",
-    "ALTER TABLE users ADD COLUMN email TEXT DEFAULT ''"
+    "ALTER TABLE users ADD COLUMN email TEXT DEFAULT ''",
+    "ALTER TABLE coupons ADD COLUMN free_shipping INTEGER DEFAULT 0"
   ]) {
     try { await db.run(sql); } catch (e) {}
   }
@@ -446,20 +447,20 @@ app.get('/api/coupons/all', adminAuth, async (req, res) => {
 });
 
 app.post('/api/coupons', adminAuth, async (req, res) => {
-  const { code, name, discount_percent, discount_value, min_value, description, image_url, usage_limit, expires_at } = req.body;
-  if (!code || (!discount_percent && !discount_value)) return res.status(400).json({ error: 'Código e valor/porcentagem obrigatórios' });
+  const { code, name, discount_percent, discount_value, min_value, description, image_url, usage_limit, expires_at, free_shipping } = req.body;
+  if (!code || (!discount_percent && !discount_value && !free_shipping)) return res.status(400).json({ error: 'Código e valor/porcentagem obrigatórios' });
   const existing = await db.get('SELECT id FROM coupons WHERE code=?', code.toUpperCase());
   if (existing) return res.status(400).json({ error: 'Código já existe' });
-  const r = await db.run('INSERT INTO coupons (code,name,discount_percent,discount_value,min_value,description,image_url,usage_limit,expires_at) VALUES (?,?,?,?,?,?,?,?,?)',
-    code.toUpperCase(), name || '', discount_percent || 0, discount_value || 0, min_value || 0, description || '', image_url || '', usage_limit || 0, expires_at || null);
+  const r = await db.run('INSERT INTO coupons (code,name,discount_percent,discount_value,min_value,description,image_url,usage_limit,expires_at,free_shipping) VALUES (?,?,?,?,?,?,?,?,?,?)',
+    code.toUpperCase(), name || '', discount_percent || 0, discount_value || 0, min_value || 0, description || '', image_url || '', usage_limit || 0, expires_at || null, free_shipping ? 1 : 0);
   await touchSync('coupons');
   res.json({ id: r.lastInsertRowid });
 });
 
 app.put('/api/coupons/:id', adminAuth, async (req, res) => {
-  const { code, name, discount_percent, discount_value, min_value, description, image_url, active, usage_limit, expires_at } = req.body;
-  await db.run('UPDATE coupons SET code=?,name=?,discount_percent=?,discount_value=?,min_value=?,description=?,image_url=?,active=?,usage_limit=?,expires_at=? WHERE id=?',
-    (code || '').toUpperCase(), name || '', discount_percent || 0, discount_value || 0, min_value || 0, description || '', image_url || '', active ? 1 : 0, usage_limit || 0, expires_at || null, req.params.id);
+  const { code, name, discount_percent, discount_value, min_value, description, image_url, active, usage_limit, expires_at, free_shipping } = req.body;
+  await db.run('UPDATE coupons SET code=?,name=?,discount_percent=?,discount_value=?,min_value=?,description=?,image_url=?,active=?,usage_limit=?,expires_at=?,free_shipping=? WHERE id=?',
+    (code || '').toUpperCase(), name || '', discount_percent || 0, discount_value || 0, min_value || 0, description || '', image_url || '', active ? 1 : 0, usage_limit || 0, expires_at || null, free_shipping ? 1 : 0, req.params.id);
   await touchSync('coupons');
   res.json({ ok: true });
 });
@@ -483,7 +484,7 @@ app.post('/api/coupons/validate', async (req, res) => {
   const discount = coupon.discount_value > 0
     ? Math.min(coupon.discount_value, subtotal)
     : subtotal * (coupon.discount_percent / 100);
-  res.json({ valid: true, code: coupon.code, discount_percent: coupon.discount_value > 0 ? 0 : coupon.discount_percent, discount, min_value: coupon.min_value, id: coupon.id });
+  res.json({ valid: true, code: coupon.code, discount_percent: coupon.discount_value > 0 ? 0 : coupon.discount_percent, discount, min_value: coupon.min_value, id: coupon.id, free_shipping: !!coupon.free_shipping });
 });
 
 app.post('/api/coupons/:id/use', async (req, res) => {
@@ -781,6 +782,9 @@ app.post('/api/orders', async (req, res) => {
     const now = new Date().toISOString();
     const coupon = await db.get("SELECT * FROM coupons WHERE code=? AND active=1 AND (expires_at IS NULL OR expires_at > ?) AND (usage_limit=0 OR times_used < usage_limit)", coupon_code.toUpperCase(), now);
     if (coupon && subtotal >= coupon.min_value) {
+      if (coupon.free_shipping) {
+        deliveryFee = 0;
+      }
       const discount = coupon.discount_value > 0
         ? Math.min(coupon.discount_value, subtotal)
         : subtotal * (coupon.discount_percent / 100);

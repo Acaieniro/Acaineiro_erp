@@ -28,7 +28,7 @@ async function calcFreight() {
   if (!full) { lastFreight = null; return; }
   try {
     const r = await API.post('/api/calc-freight', { address: full });
-    if (r.fee !== undefined) lastFreight = r;
+    lastFreight = r;
   } catch (e) { lastFreight = null; }
 }
 
@@ -710,17 +710,18 @@ async function renderCouponsPage() {
       const hasImg = !!c.image_url;
       const cp = parseFloat(c.discount_percent || 0);
       const cv = parseFloat(c.discount_value || 0);
-      const cl = cp > 0 ? `${cp}%` : `R$ ${cv.toFixed(2).replace('.',',')}`;
-      const badgeLabel = cl;
+      const isFreeShipping = !!c.free_shipping;
+      const cl = isFreeShipping ? '🚚 Frete Grátis' : (cp > 0 ? `${cp}%` : `R$ ${cv.toFixed(2).replace('.',',')}`);
+      const badgeLabel = isFreeShipping ? 'Frete Grátis' : cl;
       const nome = c.name || c.code;
       return `
         <div class="coupon-page-card ${hasImg ? 'has-image' : ''}">
-          ${hasImg ? `<div class="coupon-page-image" style="background-image:url('${c.image_url}')"><div class="coupon-page-badge">${c.code} • -${badgeLabel}</div></div>` : ''}
+          ${hasImg ? `<div class="coupon-page-image" style="background-image:url('${c.image_url}')"><div class="coupon-page-badge">${c.code} • ${badgeLabel}</div></div>` : ''}
           <div class="coupon-page-body">
             <div class="coupon-page-code">${nome}</div>
             ${c.code !== nome ? `<div style="font-size:11px;color:#aaa;margin-bottom:2px;">${c.code}</div>` : ''}
             ${c.description ? `<div class="coupon-page-desc">${c.description}</div>` : ''}
-            <div class="coupon-page-discount">${cl} de desconto</div>
+            <div class="coupon-page-discount">${cl}</div>
             <button class="coupon-page-btn ${disabled ? 'resgatado' : 'resgatar'}" data-code="${c.code}" data-percent="${c.discount_percent || 0}" data-value="${c.discount_value || 0}" ${disabled ? 'disabled' : ''} onclick="resgatarCupom(this.dataset.code, this.dataset.percent, this.dataset.value)">${esgotado ? '🔒 Esgotado' : jaResgatado ? '✅ Resgatado' : '🏷️ Resgatar Cupom'}</button>
           </div>
         </div>
@@ -1143,11 +1144,15 @@ async function applyCoupon() {
     }
 
     window.activeCoupon = r;
-    const rpct = r.discount_percent || 0;
-    feedback.innerHTML = rpct > 0 ? `✅ Cupom ${r.code} aplicado! -${rpct}% (desconto de R$ ${r.discount.toFixed(2).replace('.',',')})` : `✅ Cupom ${r.code} aplicado! (desconto de R$ ${r.discount.toFixed(2).replace('.',',')})`;
+    if (r.free_shipping) {
+      feedback.innerHTML = `✅ Cupom ${r.code} — 🚚 Frete Grátis!`;
+    } else {
+      const rpct = r.discount_percent || 0;
+      feedback.innerHTML = rpct > 0 ? `✅ Cupom ${r.code} aplicado! -${rpct}% (desconto de R$ ${r.discount.toFixed(2).replace('.',',')})` : `✅ Cupom ${r.code} aplicado! (desconto de R$ ${r.discount.toFixed(2).replace('.',',')})`;
+    }
     feedback.className = 'coupon-feedback success';
     activeCoupon = r;
-    showCouponApplied(r.code, r.discount_percent, r.discount);
+    showCouponApplied(r.code, r.discount_percent, r.discount, r.free_shipping);
     updateCheckoutWithCoupon();
   } catch (e) {
     feedback.innerHTML = 'Erro ao validar cupom';
@@ -1155,13 +1160,15 @@ async function applyCoupon() {
   }
 }
 
-function showCouponApplied(code, percent, discount) {
+function showCouponApplied(code, percent, discount, freeShipping) {
   document.getElementById('coupon-input-row').style.display = 'none';
   document.getElementById('coupon-select-row').style.display = 'none';
   const row = document.getElementById('coupon-applied-row');
   row.style.display = 'flex';
   document.getElementById('coupon-applied-code').textContent = code;
-  document.getElementById('coupon-applied-discount').textContent = `-${percent}% (R$ ${discount.toFixed(2).replace('.',',')})`;
+  document.getElementById('coupon-applied-discount').textContent = freeShipping
+    ? '🚚 Frete Grátis'
+    : `-${percent}% (R$ ${discount.toFixed(2).replace('.',',')})`;
 }
 
 function hideCouponApplied() {
@@ -1182,9 +1189,12 @@ function updateCheckoutWithCoupon() {
   document.getElementById('checkout-total').textContent = `R$ ${total.toFixed(2).replace('.',',')}`;
   const couponRow = document.getElementById('checkout-coupon-row');
   const discEl = document.getElementById('checkout-discount');
-  if (window.activeCoupon && discount > 0) {
+  if (window.activeCoupon && !window.activeCoupon.free_shipping && discount > 0) {
     couponRow.style.display = 'flex';
     discEl.textContent = `-R$ ${discount.toFixed(2).replace('.',',')} (${window.activeCoupon.discount_percent}%)`;
+  } else if (window.activeCoupon && window.activeCoupon.free_shipping) {
+    couponRow.style.display = 'flex';
+    discEl.textContent = '🚚 Frete Grátis';
   } else {
     couponRow.style.display = 'none';
   }
@@ -1261,9 +1271,12 @@ async function showCheckout() {
 
   const couponRow = document.getElementById('checkout-coupon-row');
   const discEl = document.getElementById('checkout-discount');
-  if (window.activeCoupon && discount > 0) {
+  if (window.activeCoupon && !window.activeCoupon.free_shipping && discount > 0) {
     couponRow.style.display = 'flex';
     discEl.textContent = `-R$ ${discount.toFixed(2).replace('.',',')} (${window.activeCoupon.discount_percent}%)`;
+  } else if (window.activeCoupon && window.activeCoupon.free_shipping) {
+    couponRow.style.display = 'flex';
+    discEl.textContent = '🚚 Frete Grátis';
   } else {
     couponRow.style.display = 'none';
   }
@@ -1272,6 +1285,8 @@ async function showCheckout() {
   if (feeEl) {
     if (isPickup) {
       feeEl.textContent = 'Grátis (retirada)';
+    } else if (window.activeCoupon && window.activeCoupon.free_shipping) {
+      feeEl.textContent = '🚚 Grátis';
     } else {
       feeEl.textContent = `R$ ${fee.toFixed(2).replace('.',',')}`;
     }
@@ -1293,6 +1308,8 @@ async function showCheckout() {
     if (feeEl) {
       if (isPickup) {
         feeEl.textContent = 'Grátis (retirada)';
+      } else if (window.activeCoupon && window.activeCoupon.free_shipping) {
+        feeEl.textContent = '🚚 Grátis';
       } else {
         feeEl.textContent = `R$ ${fee2.toFixed(2).replace('.',',')}`;
       }
@@ -1302,9 +1319,11 @@ async function showCheckout() {
 
   // Restore coupon if active
   if (window.activeCoupon) {
-    showCouponApplied(window.activeCoupon.code, window.activeCoupon.discount_percent, window.activeCoupon.discount);
+    showCouponApplied(window.activeCoupon.code, window.activeCoupon.discount_percent, window.activeCoupon.discount, window.activeCoupon.free_shipping);
     const pct2 = window.activeCoupon.discount_percent || 0;
-    document.getElementById('coupon-feedback').innerHTML = pct2 > 0 ? `✅ Cupom ${window.activeCoupon.code} aplicado! -${pct2}%` : `✅ Cupom ${window.activeCoupon.code} aplicado!`;
+    document.getElementById('coupon-feedback').innerHTML = window.activeCoupon.free_shipping
+      ? `✅ Cupom ${window.activeCoupon.code} — Frete Grátis!`
+      : pct2 > 0 ? `✅ Cupom ${window.activeCoupon.code} aplicado! -${pct2}%` : `✅ Cupom ${window.activeCoupon.code} aplicado!`;
     document.getElementById('coupon-feedback').className = 'coupon-feedback success';
   } else if (cupomResgatado && !window.activeCoupon) {
     document.getElementById('coupon-input').value = cupomResgatado;
