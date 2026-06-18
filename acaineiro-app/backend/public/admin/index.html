@@ -808,8 +808,12 @@
         <div class="card" style="border-left:4px solid #3B82F6;">
           <h3 style="font-size:16px;margin-bottom:12px;color:var(--purple-dark);display:flex;align-items:center;gap:8px;">🔌 PagSeguro (opcional)</h3>
           <p style="font-size:12px;color:#888;margin-bottom:12px;">1. Cole o <strong>Token de Integração</strong> enviado por email (Venda Online > Integrações > Utilização de APIs) e clique em Salvar.<br>2. Depois clique em <strong>"Criar Aplicação"</strong> para gerar Client ID + Client Secret automaticamente.</p>
-          <div class="form-row">
-            <div class="form-group" style="flex:1;"><label>Token</label><input id="set-pagseguro_token" placeholder="Cole o token do email" style="font-family:monospace;"></div>
+            <div class="form-row" style="gap:12px;">
+              <div class="form-group" style="flex:1;"><label>Mercado Pago — Public Key</label><input id="set-mp_public_key" placeholder="TEST-xxxx-..." style="font-family:monospace;font-size:11px;"></div>
+              <div class="form-group" style="flex:1;"><label>Mercado Pago — Access Token</label><input id="set-mp_access_token" placeholder="TEST-xxxx-..." style="font-family:monospace;font-size:11px;"></div>
+            </div>
+            <div class="form-row">
+              <div class="form-group" style="flex:1;"><label>Token</label><input id="set-pagseguro_token" placeholder="Cole o token do email" style="font-family:monospace;"></div>
             <div class="form-group" style="max-width:180px;display:flex;align-items:flex-end;">
               <button class="btn btn-secondary" onclick="criarAplicacaoPagBank()" style="white-space:nowrap;">⚡ Criar Aplicação</button>
             </div>
@@ -1607,7 +1611,7 @@
     }
 
     async function saveSettings() {
-      const keys = ['store_name','store_phone','store_address','delivery_fee','locationiq_key','store_open','store_close','pix_key','pagseguro_token','pagseguro_client_id','pagseguro_client_secret','loyalty_goal','loyalty_reward_type','loyalty_reward_value','loyalty_reward_desc','loyalty_reward_product_id','printer_mode','printer_ip','printer_port','auto_print'];
+      const keys = ['store_name','store_phone','store_address','delivery_fee','locationiq_key','store_open','store_close','pix_key','mp_public_key','mp_access_token','pagseguro_token','pagseguro_client_id','pagseguro_client_secret','loyalty_goal','loyalty_reward_type','loyalty_reward_value','loyalty_reward_desc','loyalty_reward_product_id','printer_mode','printer_ip','printer_port','auto_print'];
       const data = {};
       for (const k of keys) {
         const el = document.getElementById('set-' + k);

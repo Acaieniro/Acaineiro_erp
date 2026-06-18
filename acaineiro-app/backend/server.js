@@ -232,7 +232,8 @@ async function initDB() {
     "ALTER TABLE users ADD COLUMN cep TEXT DEFAULT ''",
     "ALTER TABLE users ADD COLUMN address_number TEXT DEFAULT ''",
     "ALTER TABLE users ADD COLUMN email TEXT DEFAULT ''",
-    "ALTER TABLE coupons ADD COLUMN free_shipping INTEGER DEFAULT 0"
+    "ALTER TABLE coupons ADD COLUMN free_shipping INTEGER DEFAULT 0",
+    "ALTER TABLE orders ADD COLUMN mp_payment_id TEXT DEFAULT ''"
   ]) {
     try { await db.run(sql); } catch (e) {}
   }
@@ -282,6 +283,8 @@ async function initDB() {
     await db.run('INSERT INTO settings (key,value) VALUES (?,?)', 'store_name', 'AÇAINEIRO');
     await db.run('INSERT INTO settings (key,value) VALUES (?,?)', 'pix_key', '');
     await db.run('INSERT INTO settings (key,value) VALUES (?,?)', 'pagseguro_token', '');
+    await db.run('INSERT INTO settings (key,value) VALUES (?,?)', 'mp_public_key', '');
+    await db.run('INSERT INTO settings (key,value) VALUES (?,?)', 'mp_access_token', '');
     await db.run('INSERT INTO settings (key,value) VALUES (?,?)', 'locationiq_key', '');
     await db.run('INSERT INTO settings (key,value) VALUES (?,?)', 'delivery_rate_per_km', '2');
   }
@@ -1040,54 +1043,89 @@ app.get('/api/debug/pagseguro', async (req, res) => {
   }
 });
 
-// Pix payment via PagSeguro
+// Pix payment — Mercado Pago (preferred) or PagSeguro
+async function createMpPix(order, settings) {
+  const token = settings.mp_access_token;
+  if (!token) return null;
+  const customerEmail = order.customer_phone + '@cliente.app';
+  const body = {
+    transaction_amount: order.total,
+    description: `Pedido #${order.id}`,
+    payment_method_id: 'pix',
+    payer: { email: customerEmail }
+  };
+  const res = await fetch('https://api.mercadopago.com/v1/payments', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`, 'X-Idempotency-Key': `pedido${order.id}` },
+    body: JSON.stringify(body)
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Erro Mercado Pago');
+  const pix = data.point_of_interaction?.transaction_data || {};
+  await db.run('UPDATE orders SET mp_payment_id=?, payment_data_json=? WHERE id=?', String(data.id), JSON.stringify({ mp_payment_id: data.id, qr_code: pix.qr_code, qr_code_base64: pix.qr_code_base64 }), order.id);
+  return { qr_code: pix.qr_code, qr_code_base64: pix.qr_code_base64, mp_payment_id: String(data.id) };
+}
+
+async function createPsPix(order, settings) {
+  const items = JSON.parse(order.items_json || '[]');
+  const customer = { name: order.customer_name || 'Cliente', email: order.customer_phone + '@cliente.app' };
+  if (order.customer_doc) customer.tax_id = order.customer_doc;
+  const body = {
+    reference_id: `pedido${order.id}`, customer,
+    items: items.map((it, i) => ({ reference_id: String(it.id || i), name: it.name || 'Item', quantity: it.qty || 1, unit_amount: Math.round((it.price || 0) * 100) })),
+    charges: [{ reference_id: `cob${order.id}`, description: `Pedido #${order.id}`, amount: { value: Math.round(order.total * 100), currency: 'BRL' }, payment_method: { type: 'PIX', pix: { expiration: 3600 } } }]
+  };
+  const charge = await psFetch('/orders', { method: 'POST', body: JSON.stringify(body) });
+  const ch = charge.charges?.[0] || charge;
+  const pix = ch.payment_method?.pix || {};
+  const qrCode = pix.qr_codes?.[0] || {};
+  const chargeId = ch.id || charge.id;
+  const data = { qr_code: qrCode.text, qr_code_base64: qrCode.image, charge_id: chargeId };
+  if (chargeId) await db.run('UPDATE orders SET ps_charge_id=?, payment_data_json=? WHERE id=?', chargeId, JSON.stringify(data), order.id);
+  return { qr_code: qrCode.text, qr_code_base64: qrCode.image, charge_id: chargeId };
+}
+
 app.post('/api/orders/:id/pay', async (req, res) => {
   const order = await db.get('SELECT * FROM orders WHERE id=?', req.params.id);
   if (!order) return res.status(404).json({ error: 'Pedido não encontrado' });
+  if (order.payment_method !== 'pix') return res.status(400).json({ error: 'Método não suportado' });
   try {
-    if (order.payment_method === 'pix') {
-      const items = JSON.parse(order.items_json || '[]');
-      const customer = { name: order.customer_name || 'Cliente', email: order.customer_email || 'cliente@email.com' };
-      if (order.customer_doc) customer.tax_id = order.customer_doc;
-      const body = {
-        reference_id: `pedido${order.id}`,
-        customer,
-        items: items.map((it, i) => ({
-          reference_id: String(it.id || i),
-          name: it.name || 'Item',
-          quantity: it.qty || 1,
-          unit_amount: Math.round((it.price || 0) * 100)
-        })),
-        charges: [{
-          reference_id: `cob${order.id}`,
-          description: `Pedido #${order.id}`,
-          amount: { value: Math.round(order.total * 100), currency: 'BRL' },
-          payment_method: { type: 'PIX', pix: { expiration: 3600 } }
-        }]
-      };
-      console.log('[PagSeguro] criando pedido Pix, body:', JSON.stringify(body).substring(0,200));
-      const charge = await psFetch('/orders', { method:'POST', body: JSON.stringify(body) });
-      const ch = charge.charges?.[0] || charge;
-      const pix = ch.payment_method?.pix || {};
-      const qrCode = pix.qr_codes?.[0] || {};
-      const chargeId = ch.id || charge.id;
-      const data = { qr_code: qrCode.text, qr_code_base64: qrCode.image, charge_id: chargeId };
-      if (chargeId) await db.run('UPDATE orders SET ps_charge_id=?, payment_data_json=? WHERE id=?', chargeId, JSON.stringify(data), order.id);
-      res.json({ method:'pix', qr_code: qrCode.text, qr_code_base64: qrCode.image, charge_id: chargeId });
-    } else {
-      res.status(400).json({ error: 'Método de pagamento não suportado' });
-    }
+    const settings = await getSettings();
+    let result = await createMpPix(order, settings);
+    if (!result) result = await createPsPix(order, settings);
+    res.json({ method: 'pix', ...result });
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
-app.get('/api/orders/:id/payment-status', async (req, res) => {
-  const order = await db.get('SELECT * FROM orders WHERE id=?', req.params.id);
-  if (!order || !order.ps_charge_id) return res.json({ status:'pending' });
+async function checkMpStatus(order) {
+  if (!order.mp_payment_id) return null;
+  const settings = await getSettings();
+  const token = settings.mp_access_token;
+  if (!token) return null;
+  const res = await fetch(`https://api.mercadopago.com/v1/payments/${order.mp_payment_id}`, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  if (!res.ok) return null;
+  const data = await res.json();
+  return { status: data.status === 'approved' ? 'approved' : 'pending', raw: data.status };
+}
+
+async function checkPsStatus(order) {
+  if (!order.ps_charge_id) return null;
   try {
     const c = await psFetch(`/charges/${order.ps_charge_id}`);
     const statusMap = { 'PAID': 'approved', 'PENDING': 'pending', 'CANCELED': 'cancelled', 'DECLINED': 'rejected' };
-    res.json({ status: statusMap[c.status] || 'pending', status_detail: c.status });
-  } catch (e) { res.json({ status:'pending' }); }
+    return { status: statusMap[c.status] || 'pending', raw: c.status };
+  } catch (e) { return null; }
+}
+
+app.get('/api/orders/:id/payment-status', async (req, res) => {
+  const order = await db.get('SELECT * FROM orders WHERE id=?', req.params.id);
+  if (!order) return res.json({ status: 'pending' });
+  let st = await checkMpStatus(order);
+  if (!st) st = await checkPsStatus(order);
+  if (!st) st = { status: 'pending', raw: 'pending' };
+  res.json({ status: st.status, status_detail: st.raw });
 });
 
 app.post('/api/orders/:id/confirm-payment', async (req, res) => {

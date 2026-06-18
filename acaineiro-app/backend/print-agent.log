@@ -116,3 +116,6 @@
 [17/06/2026, 22:22:01] Erro ao imprimir #68: transferOut error: Disconnected
 [17/06/2026, 22:52:58] Imprimindo pedido #71 - Allison Rodrigo
 [17/06/2026, 22:52:59] Erro ao imprimir #71: transferOut error: Disconnected
+[18/06/2026, 00:30:28] Erro na consulta: fetch failed
+[18/06/2026, 13:10:12] Erro na consulta: fetch failed
+[18/06/2026, 14:34:50] Erro na consulta: SERVER_ERROR: Server returned HTTP status 502

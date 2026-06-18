@@ -1352,8 +1352,10 @@ function fillCheckoutData() {
   const btnAlt = document.getElementById('btn-alt-endereco');
 
   if (userData && userData.address) {
-    document.getElementById('ord-address').value = userData.address;
-    document.getElementById('ord-neighborhood').value = userData.neighborhood || '';
+    if (!infoEl.classList.contains('active')) {
+      document.getElementById('ord-address').value = userData.address;
+      document.getElementById('ord-neighborhood').value = userData.neighborhood || '';
+    }
     infoEl.className = 'checkout-address-info';
     infoEl.innerHTML = '<span>📍 Usando endereço padrão da sua conta</span>';
     btnAlt.style.display = 'flex';
