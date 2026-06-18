@@ -196,6 +196,12 @@ async function initDB() {
   await db.run(`CREATE TABLE IF NOT EXISTS neighborhood_fees (
     neighborhood TEXT PRIMARY KEY, fee REAL NOT NULL
   )`);
+  await db.run(`CREATE TABLE IF NOT EXISTS distance_fees (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    min_km REAL NOT NULL,
+    max_km REAL NOT NULL,
+    fee REAL NOT NULL
+  )`);
 
   // Migrations - safe to run repeatedly
   for (const sql of [
@@ -649,6 +655,27 @@ app.delete('/api/neighborhood-fees/:neighborhood', adminAuth, async (req, res) =
   res.json({ ok: true });
 });
 
+// ─── DISTANCE FEES ───
+app.get('/api/distance-fees', async (req, res) => {
+  const fees = await db.all('SELECT * FROM distance_fees ORDER BY min_km');
+  res.json(fees);
+});
+
+app.post('/api/distance-fees', adminAuth, async (req, res) => {
+  const { min_km, max_km, fee } = req.body;
+  if (min_km === undefined || max_km === undefined || fee === undefined) return res.status(400).json({ error: 'min_km, max_km e fee obrigatórios' });
+  await db.run('INSERT OR REPLACE INTO distance_fees (min_km, max_km, fee) VALUES (?,?,?)',
+    parseFloat(min_km), parseFloat(max_km), parseFloat(fee) || 0);
+  await touchSync('settings');
+  res.json({ ok: true });
+});
+
+app.delete('/api/distance-fees/:id', adminAuth, async (req, res) => {
+  await db.run('DELETE FROM distance_fees WHERE id=?', req.params.id);
+  await touchSync('settings');
+  res.json({ ok: true });
+});
+
 // ─── SETTINGS ───
 app.get('/api/settings', async (req, res) => {
   res.json(await getSettings());
@@ -707,15 +734,20 @@ async function calcDistance(address, settings) {
   } catch (e) { return null; }
 }
 
+async function freightForDistance(distKm) {
+  if (distKm === null || distKm === undefined) return null;
+  const tier = await db.get('SELECT fee FROM distance_fees WHERE min_km <= ? AND max_km >= ? ORDER BY min_km LIMIT 1', distKm, distKm);
+  return tier ? tier.fee : null;
+}
+
 app.post('/api/calc-freight', async (req, res) => {
   const { address } = req.body;
   if (!address) return res.status(400).json({ error: 'Endereço obrigatório' });
   const settings = await getSettings();
-  const rate = parseFloat(settings.delivery_rate_per_km) || 0;
-  if (!rate) return res.json({ distance_km: 0, fee: 0, note: 'Taxa por km não configurada' });
   const distKm = await calcDistance(address, settings);
   if (distKm === null) return res.json({ distance_km: 0, fee: 0, note: 'Não foi possível calcular distância' });
-  const fee = Math.round(distKm * rate * 100) / 100;
+  const f = await freightForDistance(distKm);
+  const fee = f !== null ? f : (parseFloat(settings.delivery_fee) || 0);
   res.json({ distance_km: Math.round(distKm * 10) / 10, fee });
 });
 
@@ -728,13 +760,12 @@ app.post('/api/orders', async (req, res) => {
   const settings = await getSettings();
   let deliveryFee = 0;
   if (!isPickup) {
-    const rate = parseFloat(settings.delivery_rate_per_km) || 0;
-    if (rate > 0) {
-      const addr = [customer.address, customer.neighborhood].filter(Boolean).join(', ');
-      const distKm = await calcDistance(addr, settings);
-      if (distKm !== null) deliveryFee = Math.round(distKm * rate * 100) / 100;
-    }
-    if (!deliveryFee) {
+    const addr = [customer.address, customer.neighborhood].filter(Boolean).join(', ');
+    const distKm = await calcDistance(addr, settings);
+    let tierFee = distKm !== null ? await freightForDistance(distKm) : null;
+    if (tierFee !== null) {
+      deliveryFee = tierFee;
+    } else {
       const nf = customer.neighborhood
         ? await db.get('SELECT fee FROM neighborhood_fees WHERE neighborhood=?', customer.neighborhood.trim())
         : null;
