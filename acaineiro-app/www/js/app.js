@@ -1,5 +1,5 @@
 const API_URL = `https://sistemaacaineiro.netlify.app`;
-const APP_VERSION = '3'; // incremente a cada deploy que muda app.js
+const APP_VERSION = '4'; // incremente a cada deploy que muda app.js
 let cart = [];
 let currentCategory = 'todos';
 let allProducts = [];
