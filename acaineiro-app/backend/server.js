@@ -689,6 +689,10 @@ app.put('/api/settings', adminAuth, async (req, res) => {
   for (const [k, v] of Object.entries(req.body)) {
     await db.run('INSERT OR REPLACE INTO settings (key, value) VALUES (?,?)', k, String(v));
   }
+  // Se trocou a chave de mapa, limpa cache de coordenadas da loja pra forçar re-geocode
+  if (req.body.here_key !== undefined || req.body.locationiq_key !== undefined) {
+    await db.run("DELETE FROM settings WHERE key IN ('store_lat','store_lng')");
+  }
   if (req.body.flash_hours !== undefined || req.body.flash_minutes !== undefined) {
     const s = await getSettings();
     const hours = parseInt(req.body.flash_hours ?? s.flash_hours ?? '2');
