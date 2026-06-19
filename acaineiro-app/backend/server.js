@@ -735,9 +735,9 @@ async function calcDistance(address, settings) {
       await db.run('INSERT OR REPLACE INTO settings (key,value) VALUES (?,?)', 'store_lat', String(slat));
       await db.run('INSERT OR REPLACE INTO settings (key,value) VALUES (?,?)', 'store_lng', String(slon));
     }
-    // Geocode customer address (append city from store address to improve accuracy)
-    const storeCity = storeAddr.split('-').pop().trim().split(',')[0]?.trim();
-    const geoAddress = storeCity && !address.includes(storeCity) ? address + ', ' + storeCity : address;
+    // Geocode customer address (append state from store address to improve accuracy for multi-city neighborhoods)
+    const storeUF = storeAddr.split('-').pop().trim().split(',').pop()?.trim();
+    const geoAddress = storeUF && !address.includes(storeUF) ? address + ', ' + storeUF : address;
     let clat, clon;
     if (useHere) {
       const cGeo = await new Promise((resolve, reject) => {
