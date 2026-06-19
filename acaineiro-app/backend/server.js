@@ -754,7 +754,7 @@ async function calcDistance(address, settings) {
     let distMeters = 0;
     if (useHere) {
       const route = await new Promise((resolve, reject) => {
-        https.get(`https://router.hereapi.com/v8/routes?origin=${slat},${slon}&destination=${clat},${clon}&transportMode=car&return=summary&apikey=${key}`, r => { let d=''; r.on('data',c=>d+=c); r.on('end',()=>resolve(JSON.parse(d))); r.on('error',reject); });
+        https.get(`https://router.hereapi.com/v8/routes?origin=${slat},${slon}&destination=${clat},${clon}&transportMode=car&return=summary&apiKey=${key}`, r => { let d=''; r.on('data',c=>d+=c); r.on('end',()=>resolve(JSON.parse(d))); r.on('error',reject); });
       });
       if (!route || !route.routes || !route.routes.length) return null;
       distMeters = route.routes[0].sections?.[0]?.summary?.length || 0;
