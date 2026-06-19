@@ -1352,13 +1352,15 @@ function fillCheckoutData() {
   const btnAlt = document.getElementById('btn-alt-endereco');
 
   if (userData && userData.address) {
-    if (!infoEl.classList.contains('active')) {
+    if (infoEl.classList.contains('active')) {
+      btnAlt.style.display = 'flex';
+    } else {
       document.getElementById('ord-address').value = userData.address;
       document.getElementById('ord-neighborhood').value = userData.neighborhood || '';
+      infoEl.className = 'checkout-address-info';
+      infoEl.innerHTML = '<span>📍 Usando endereço padrão da sua conta</span>';
+      btnAlt.style.display = 'flex';
     }
-    infoEl.className = 'checkout-address-info';
-    infoEl.innerHTML = '<span>📍 Usando endereço padrão da sua conta</span>';
-    btnAlt.style.display = 'flex';
   } else {
     infoEl.className = 'checkout-address-info hidden';
     btnAlt.style.display = 'none';
@@ -1379,6 +1381,7 @@ function toggleAltAddress() {
     document.getElementById('ord-address').value = '';
     document.getElementById('ord-neighborhood').value = '';
     document.getElementById('ord-address').focus();
+    lastFreight = null;
   }
 }
 
@@ -1387,6 +1390,8 @@ function undoAltAddress() {
   document.getElementById('checkout-address-info').innerHTML = '<span>📍 Usando endereço padrão da sua conta</span>';
   document.getElementById('ord-address').value = userData.address || '';
   document.getElementById('ord-neighborhood').value = userData.neighborhood || '';
+  lastFreight = null;
+  recalcCheckoutFee();
 }
 
 async function submitOrder() {
