@@ -763,6 +763,9 @@
           <div class="form-row">
             <div class="form-group"><label>Chave LocationIQ (frete por distância)</label><input id="set-locationiq_key" placeholder="pk.xxxxxxxxxxxxxxxxxxxxxxxx" style="font-family:monospace;font-size:12px;"></div>
           </div>
+          <div class="form-row">
+            <div class="form-group"><label>Chave HERE Maps (recomendado)</label><input id="set-here_key" placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" style="font-family:monospace;font-size:12px;"></div>
+          </div>
         </div>
 
         <div class="card" style="border-left:4px solid #10B981;">
@@ -1611,7 +1614,7 @@
     }
 
     async function saveSettings() {
-      const keys = ['store_name','store_phone','store_address','delivery_fee','locationiq_key','store_open','store_close','pix_key','mp_public_key','mp_access_token','pagseguro_token','pagseguro_client_id','pagseguro_client_secret','loyalty_goal','loyalty_reward_type','loyalty_reward_value','loyalty_reward_desc','loyalty_reward_product_id','printer_mode','printer_ip','printer_port','auto_print'];
+      const keys = ['store_name','store_phone','store_address','delivery_fee','locationiq_key','here_key','store_open','store_close','pix_key','mp_public_key','mp_access_token','pagseguro_token','pagseguro_client_id','pagseguro_client_secret','loyalty_goal','loyalty_reward_type','loyalty_reward_value','loyalty_reward_desc','loyalty_reward_product_id','printer_mode','printer_ip','printer_port','auto_print'];
       const data = {};
       for (const k of keys) {
         const el = document.getElementById('set-' + k);

@@ -703,37 +703,64 @@ app.put('/api/settings', adminAuth, async (req, res) => {
 
 // ─── FREIGHT ───
 async function calcDistance(address, settings) {
-  const key = settings.locationiq_key;
-  if (!key) return null;
   const storeAddr = settings.store_address;
-  if (!storeAddr) return null;
-  if (!address) return null;
+  if (!storeAddr || !address) return null;
+  const useHere = !!settings.here_key;
+  const key = useHere ? settings.here_key : settings.locationiq_key;
+  if (!key) return null;
   try {
     const https = require('https');
     // Geocode store address (cache em settings.store_lat, store_lng)
     let slat = settings.store_lat, slon = settings.store_lng;
     if (!slat || !slon) {
-      const sGeo = await new Promise((resolve, reject) => {
-        https.get(`https://us1.locationiq.com/v1/search?key=${key}&q=${encodeURIComponent(storeAddr)}&format=json&limit=1`, r => { let d=''; r.on('data',c=>d+=c); r.on('end',()=>resolve(JSON.parse(d))); r.on('error',reject); });
-      });
-      if (sGeo && sGeo.length) {
-        slat = sGeo[0].lat; slon = sGeo[0].lon;
-        await db.run('INSERT OR REPLACE INTO settings (key,value) VALUES (?,?)', 'store_lat', slat);
-        await db.run('INSERT OR REPLACE INTO settings (key,value) VALUES (?,?)', 'store_lng', slon);
-      } else return null;
+      if (useHere) {
+        const sGeo = await new Promise((resolve, reject) => {
+          https.get(`https://geocode.search.hereapi.com/v1/geocode?q=${encodeURIComponent(storeAddr)}&apiKey=${key}`, r => { let d=''; r.on('data',c=>d+=c); r.on('end',()=>resolve(JSON.parse(d))); r.on('error',reject); });
+        });
+        if (sGeo && sGeo.items && sGeo.items.length) {
+          slat = sGeo.items[0].position.lat; slon = sGeo.items[0].position.lng;
+        } else return null;
+      } else {
+        const sGeo = await new Promise((resolve, reject) => {
+          https.get(`https://us1.locationiq.com/v1/search?key=${key}&q=${encodeURIComponent(storeAddr)}&format=json&limit=1`, r => { let d=''; r.on('data',c=>d+=c); r.on('end',()=>resolve(JSON.parse(d))); r.on('error',reject); });
+        });
+        if (sGeo && sGeo.length) {
+          slat = sGeo[0].lat; slon = sGeo[0].lon;
+        } else return null;
+      }
+      await db.run('INSERT OR REPLACE INTO settings (key,value) VALUES (?,?)', 'store_lat', String(slat));
+      await db.run('INSERT OR REPLACE INTO settings (key,value) VALUES (?,?)', 'store_lng', String(slon));
     }
     // Geocode customer address
-    const cGeo = await new Promise((resolve, reject) => {
-      https.get(`https://us1.locationiq.com/v1/search?key=${key}&q=${encodeURIComponent(address)}&format=json&limit=1`, r => { let d=''; r.on('data',c=>d+=c); r.on('end',()=>resolve(JSON.parse(d))); r.on('error',reject); });
-    });
-    if (!cGeo || !cGeo.length) return null;
-    const clat = cGeo[0].lat, clon = cGeo[0].lon;
+    let clat, clon;
+    if (useHere) {
+      const cGeo = await new Promise((resolve, reject) => {
+        https.get(`https://geocode.search.hereapi.com/v1/geocode?q=${encodeURIComponent(address)}&apiKey=${key}`, r => { let d=''; r.on('data',c=>d+=c); r.on('end',()=>resolve(JSON.parse(d))); r.on('error',reject); });
+      });
+      if (!cGeo || !cGeo.items || !cGeo.items.length) return null;
+      clat = cGeo.items[0].position.lat; clon = cGeo.items[0].position.lng;
+    } else {
+      const cGeo = await new Promise((resolve, reject) => {
+        https.get(`https://us1.locationiq.com/v1/search?key=${key}&q=${encodeURIComponent(address)}&format=json&limit=1`, r => { let d=''; r.on('data',c=>d+=c); r.on('end',()=>resolve(JSON.parse(d))); r.on('error',reject); });
+      });
+      if (!cGeo || !cGeo.length) return null;
+      clat = cGeo[0].lat; clon = cGeo[0].lon;
+    }
     // Get driving route
-    const route = await new Promise((resolve, reject) => {
-      https.get(`https://us1.locationiq.com/v1/directions/driving/${slon},${slat};${clon},${clat}?key=${key}&overview=false&steps=false`, r => { let d=''; r.on('data',c=>d+=c); r.on('end',()=>resolve(JSON.parse(d))); r.on('error',reject); });
-    });
-    if (!route || !route.routes || !route.routes.length) return null;
-    const distMeters = route.routes[0].legs?.[0]?.distance || 0;
+    let distMeters = 0;
+    if (useHere) {
+      const route = await new Promise((resolve, reject) => {
+        https.get(`https://router.hereapi.com/v8/routes?origin=${slat},${slon}&destination=${clat},${clon}&transportMode=car&return=summary&apikey=${key}`, r => { let d=''; r.on('data',c=>d+=c); r.on('end',()=>resolve(JSON.parse(d))); r.on('error',reject); });
+      });
+      if (!route || !route.routes || !route.routes.length) return null;
+      distMeters = route.routes[0].sections?.[0]?.summary?.length || 0;
+    } else {
+      const route = await new Promise((resolve, reject) => {
+        https.get(`https://us1.locationiq.com/v1/directions/driving/${slon},${slat};${clon},${clat}?key=${key}&overview=false&steps=false`, r => { let d=''; r.on('data',c=>d+=c); r.on('end',()=>resolve(JSON.parse(d))); r.on('error',reject); });
+      });
+      if (!route || !route.routes || !route.routes.length) return null;
+      distMeters = route.routes[0].legs?.[0]?.distance || 0;
+    }
     return distMeters / 1000; // km
   } catch (e) { return null; }
 }
