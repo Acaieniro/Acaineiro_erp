@@ -1100,6 +1100,26 @@ app.post('/api/orders/:id/pay', async (req, res) => {
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
+async function confirmPayment(orderId) {
+  await db.run("UPDATE orders SET payment_status='pago', status='preparando', updated_at=CURRENT_TIMESTAMP WHERE id=?", orderId);
+  const order = await db.get('SELECT * FROM orders WHERE id=?', orderId);
+  if (!order) return;
+  order.items = JSON.parse(order.items_json);
+  if (io) {
+    io.to(`order-${order.id}`).emit('payment-confirmed', order);
+    io.to(`order-${order.id}`).emit('status-update', order);
+    io.to('admin').emit('order-status', order);
+    io.to('admin').emit('payment-confirmed-admin', { id: order.id });
+  }
+  if (!isNetlify) {
+    getSettings().then(s => {
+      if (s.auto_print === '1' || s.auto_print === undefined) {
+        printerManager?.printOrder(order, s).catch(e => console.log('[Printer] Pix auto-print error:', e.message));
+      }
+    }).catch(() => {});
+  }
+}
+
 async function checkMpStatus(order) {
   if (!order.mp_payment_id) return null;
   const settings = await getSettings();
@@ -1128,6 +1148,10 @@ app.get('/api/orders/:id/payment-status', async (req, res) => {
   let st = await checkMpStatus(order);
   if (!st) st = await checkPsStatus(order);
   if (!st) st = { status: 'pending', raw: 'pending' };
+  // Auto-confirma se MP retornar approved (proteção contra PIX agendado)
+  if (st.status === 'approved' && order.payment_status !== 'pago') {
+    await confirmPayment(order.id);
+  }
   res.json({ status: st.status, status_detail: st.raw });
 });
 
@@ -1135,25 +1159,7 @@ app.post('/api/orders/:id/confirm-payment', async (req, res) => {
   const current = await db.get('SELECT * FROM orders WHERE id=?', req.params.id);
   if (!current) return res.status(404).json({ error: 'Pedido não encontrado' });
   if (current.payment_status === 'pago') return res.json({ ok: true });
-  await db.run("UPDATE orders SET payment_status='pago', status='preparando', updated_at=CURRENT_TIMESTAMP WHERE id=?", req.params.id);
-  const order = await db.get('SELECT * FROM orders WHERE id=?', req.params.id);
-  if (order) {
-    order.items = JSON.parse(order.items_json);
-    if (io) {
-      io.to(`order-${order.id}`).emit('payment-confirmed', order);
-      io.to(`order-${order.id}`).emit('status-update', order);
-      io.to('admin').emit('order-status', order);
-      io.to('admin').emit('payment-confirmed-admin', { id: order.id });
-    }
-    // Auto-print Pix apos confirmacao do pagamento
-    if (!isNetlify) {
-      getSettings().then(s => {
-        if (s.auto_print === '1' || s.auto_print === undefined) {
-          printerManager?.printOrder(order, s).catch(e => console.log('[Printer] Pix auto-print error:', e.message));
-        }
-      }).catch(() => {});
-    }
-  }
+  await confirmPayment(req.params.id);
   res.json({ ok: true });
 });
 
@@ -1216,6 +1222,35 @@ app.post('/api/pagseguro/webhook', async (req, res) => {
     }
     res.json({ ok: true });
   } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+// Mercado Pago webhook — notifica quando status do PIX muda
+app.post('/api/mercadopago/webhook', async (req, res) => {
+  try {
+    const { action, data } = req.body;
+    if (action === 'payment.updated' && data?.id) {
+      const order = await db.get('SELECT * FROM orders WHERE mp_payment_id=?', String(data.id));
+      if (order && order.payment_status !== 'pago') {
+        const settings = await getSettings();
+        const token = settings.mp_access_token;
+        if (token) {
+          const r = await fetch(`https://api.mercadopago.com/v1/payments/${data.id}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (r.ok) {
+            const payment = await r.json();
+            if (payment.status === 'approved') {
+              await confirmPayment(order.id);
+            }
+          }
+        }
+      }
+    }
+    res.status(200).json({ ok: true });
+  } catch (e) {
+    console.error('[MP Webhook] error:', e.message);
+    res.status(200).json({ ok: true });
+  }
 });
 
 // ─── CUSTOMERS ───
