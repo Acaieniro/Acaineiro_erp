@@ -1377,8 +1377,13 @@ function toggleAltAddress() {
   if (isActive) {
     infoEl.classList.remove('active');
     infoEl.innerHTML = '<span>📍 Usando endereço padrão da sua conta</span>';
+    _fillingFields = true;
     document.getElementById('ord-address').value = userData.address || '';
     document.getElementById('ord-neighborhood').value = userData.neighborhood || '';
+    _fillingFields = false;
+    lastFreight = null;
+    if (freightTimer) clearTimeout(freightTimer);
+    calcFreight().then(() => showCheckout());
   } else {
     infoEl.classList.add('active');
     infoEl.innerHTML = '<span>✏️ Editando endereço diferente</span><button class="checkout-alt-address-btn" onclick="undoAltAddress()">↩ Usar padrão</button>';
