@@ -416,6 +416,10 @@
               <input type="email" id="reg-email" class="acc-auth-input" placeholder="E-mail (opcional)">
               <input type="text" id="reg-cpf" class="acc-auth-input" placeholder="CPF (apenas números)" maxlength="11">
               <input type="password" id="reg-pass" class="acc-auth-input" placeholder="Senha">
+              <div style="display:flex;gap:8px;">
+                <input type="text" id="reg-cep" class="acc-auth-input" placeholder="CEP" maxlength="9" style="flex:1;" onblur="buscarCep('reg')">
+                <input type="text" id="reg-address_number" class="acc-auth-input" placeholder="Nº" maxlength="10" style="flex:0 0 70px;">
+              </div>
               <input type="text" id="reg-address" class="acc-auth-input" placeholder="Endereço (opcional)">
               <input type="text" id="reg-neighborhood" class="acc-auth-input" placeholder="Bairro (opcional)">
               <button class="acc-auth-btn acc-auth-btn-secondary" onclick="registerUser()">Criar Conta</button>
@@ -459,7 +463,7 @@
               <input type="email" id="prof-email" class="acc-auth-input" placeholder="E-mail" style="margin-bottom:8px;">
               <input type="text" id="prof-cpf" class="acc-auth-input" placeholder="CPF (só números)" maxlength="11">
               <div style="display:flex;gap:8px;">
-                <input type="text" id="prof-cep" class="acc-auth-input" placeholder="CEP" maxlength="8" style="flex:1;">
+                <input type="text" id="prof-cep" class="acc-auth-input" placeholder="CEP" maxlength="9" style="flex:1;" onblur="buscarCep('prof')">
                 <input type="text" id="prof-address_number" class="acc-auth-input" placeholder="Nº" maxlength="10" style="flex:0 0 70px;">
               </div>
               <input type="text" id="prof-address" class="acc-auth-input" placeholder="Endereço (rua)">

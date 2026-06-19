@@ -1911,6 +1911,20 @@ async function loadAccount() {
   }
 }
 
+async function buscarCep(prefix) {
+  const cepInput = document.getElementById(prefix + '-cep');
+  const cep = cepInput?.value.replace(/\D/g, '');
+  if (!cep || cep.length !== 8) return;
+  try {
+    const r = await fetch(`https://viacep.com.br/ws/${cep}/json/`).then(r => r.json());
+    if (r.erro) return;
+    const addrEl = document.getElementById(prefix + '-address');
+    const hoodEl = document.getElementById(prefix + '-neighborhood');
+    if (addrEl && r.logradouro) addrEl.value = r.logradouro;
+    if (hoodEl && r.bairro) hoodEl.value = r.bairro;
+  } catch (e) {}
+}
+
 async function saveProfile() {
   const data = {
     name: document.getElementById('prof-name').value.trim(),
@@ -1931,6 +1945,8 @@ async function saveProfile() {
     userData = { ...userData, ...data };
     localStorage.setItem('acaineiro_user', JSON.stringify(userData));
     document.getElementById('account-name').textContent = data.name;
+    const emailEl = document.getElementById('account-email');
+    if (emailEl) emailEl.textContent = data.email || '—';
     alert('✅ Dados salvos!');
   } catch (e) { alert('Erro: ' + e.message); }
 }
@@ -1959,12 +1975,14 @@ async function registerUser() {
   const email = document.getElementById('reg-email').value.trim();
   const cpf = document.getElementById('reg-cpf').value.trim();
   const pass = document.getElementById('reg-pass').value.trim();
+  const cep = document.getElementById('reg-cep')?.value.trim() || '';
+  const address_number = document.getElementById('reg-address_number')?.value.trim() || '';
   const address = document.getElementById('reg-address').value.trim();
   const neighborhood = document.getElementById('reg-neighborhood').value.trim();
   const err = document.getElementById('auth-error');
   if (!name || !phone || !pass) { err.textContent = 'Nome, telefone e senha obrigatórios'; err.style.display = 'block'; return; }
   try {
-    const r = await fetch(`${API_URL}/api/auth/register`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name, phone, email, cpf, password: pass, address, neighborhood }) }).then(r => r.json());
+    const r = await fetch(`${API_URL}/api/auth/register`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name, phone, email, cpf, password: pass, cep, address_number, address, neighborhood }) }).then(r => r.json());
     if (r.error) throw new Error(r.error);
     userToken = r.auth_token;
     userData = r;
