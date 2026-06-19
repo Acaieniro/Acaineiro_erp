@@ -751,7 +751,7 @@ app.post('/api/calc-freight', async (req, res) => {
   const distKm = await calcDistance(address, settings);
   if (distKm === null) {
     const fallbackFee = parseFloat(settings.delivery_fee);
-    return res.json({ distance_km: 0, fee: isNaN(fallbackFee) ? 0 : fallbackFee, note: 'Não foi possível calcular distância — usando taxa padrão' });
+    return res.json({ distance_km: 0, fee: isNaN(fallbackFee) ? 0 : fallbackFee, calc_failed: true, note: 'Não foi possível calcular distância — usando taxa padrão' });
   }
   const f = await freightForDistance(distKm);
   const fee = f !== null ? f : (parseFloat(settings.delivery_fee) || 0);

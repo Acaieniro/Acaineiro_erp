@@ -30,7 +30,7 @@ async function calcFreight() {
   if (!full) { lastFreight = null; return; }
   try {
     const r = await API.post('/api/calc-freight', { address: full });
-    lastFreight = r;
+    lastFreight = r.calc_failed ? null : r;
   } catch (e) { lastFreight = null; }
 }
 
@@ -1210,6 +1210,8 @@ function removeCoupon() {
   document.getElementById('coupon-input').value = '';
   hideCouponApplied();
   updateCheckoutWithCoupon();
+  if (freightTimer) clearTimeout(freightTimer);
+  calcFreight().then(() => showCheckout());
 }
 
 function calcTroco() {
