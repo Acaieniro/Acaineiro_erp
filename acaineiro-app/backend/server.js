@@ -735,17 +735,19 @@ async function calcDistance(address, settings) {
       await db.run('INSERT OR REPLACE INTO settings (key,value) VALUES (?,?)', 'store_lat', String(slat));
       await db.run('INSERT OR REPLACE INTO settings (key,value) VALUES (?,?)', 'store_lng', String(slon));
     }
-    // Geocode customer address
+    // Geocode customer address (append city from store address to improve accuracy)
+    const storeCity = storeAddr.split('-').pop().trim().split(',')[0]?.trim();
+    const geoAddress = storeCity && !address.includes(storeCity) ? address + ', ' + storeCity : address;
     let clat, clon;
     if (useHere) {
       const cGeo = await new Promise((resolve, reject) => {
-        https.get(`https://geocode.search.hereapi.com/v1/geocode?q=${encodeURIComponent(address)}&apiKey=${key}`, r => { let d=''; r.on('data',c=>d+=c); r.on('end',()=>resolve(JSON.parse(d))); r.on('error',reject); });
+        https.get(`https://geocode.search.hereapi.com/v1/geocode?q=${encodeURIComponent(geoAddress)}&apiKey=${key}`, r => { let d=''; r.on('data',c=>d+=c); r.on('end',()=>resolve(JSON.parse(d))); r.on('error',reject); });
       });
       if (!cGeo || !cGeo.items || !cGeo.items.length) return null;
       clat = cGeo.items[0].position.lat; clon = cGeo.items[0].position.lng;
     } else {
       const cGeo = await new Promise((resolve, reject) => {
-        https.get(`https://us1.locationiq.com/v1/search?key=${key}&q=${encodeURIComponent(address)}&format=json&limit=1`, r => { let d=''; r.on('data',c=>d+=c); r.on('end',()=>resolve(JSON.parse(d))); r.on('error',reject); });
+        https.get(`https://us1.locationiq.com/v1/search?key=${key}&q=${encodeURIComponent(geoAddress)}&format=json&limit=1`, r => { let d=''; r.on('data',c=>d+=c); r.on('end',()=>resolve(JSON.parse(d))); r.on('error',reject); });
       });
       if (!cGeo || !cGeo.length) return null;
       clat = cGeo[0].lat; clon = cGeo[0].lon;
