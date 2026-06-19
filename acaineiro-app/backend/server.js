@@ -345,7 +345,7 @@ const adminAuth = (req, res, next) => {
 const userAuth = async (req, res, next) => {
   const token = req.headers['x-user-token'];
   if (!token) return res.status(401).json({ error: 'Não autenticado' });
-  const user = await db.get('SELECT id, name, phone, cpf, cep, address_number, address, neighborhood FROM users WHERE auth_token=?', token);
+  const user = await db.get('SELECT id, name, phone, email, cpf, cep, address_number, address, neighborhood FROM users WHERE auth_token=?', token);
   if (!user) return res.status(401).json({ error: 'Token inválido' });
   req.user = user;
   next();
@@ -749,7 +749,10 @@ app.post('/api/calc-freight', async (req, res) => {
   if (!address) return res.status(400).json({ error: 'Endereço obrigatório' });
   const settings = await getSettings();
   const distKm = await calcDistance(address, settings);
-  if (distKm === null) return res.json({ distance_km: 0, fee: 0, note: 'Não foi possível calcular distância' });
+  if (distKm === null) {
+    const fallbackFee = parseFloat(settings.delivery_fee);
+    return res.json({ distance_km: 0, fee: isNaN(fallbackFee) ? 0 : fallbackFee, note: 'Não foi possível calcular distância — usando taxa padrão' });
+  }
   const f = await freightForDistance(distKm);
   const fee = f !== null ? f : (parseFloat(settings.delivery_fee) || 0);
   res.json({ distance_km: Math.round(distKm * 10) / 10, fee });

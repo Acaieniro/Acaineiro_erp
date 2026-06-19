@@ -11,6 +11,7 @@ let mpLoading = null;
 let neighborhoodFees = [];
 let lastFreight = null;
 let freightTimer = null;
+let _fillingFields = false;
 
 function deliveryFeeFor(neighborhood, isPickup) {
   if (isPickup) return 0;
@@ -1241,6 +1242,7 @@ function toggleOrderType() {
 }
 
 function recalcCheckoutFee() {
+  if (_fillingFields) return;
   const page = document.getElementById('page-checkout');
   if (page && page.classList.contains('active')) {
     if (freightTimer) clearTimeout(freightTimer);
@@ -1355,8 +1357,10 @@ function fillCheckoutData() {
     if (infoEl.classList.contains('active')) {
       btnAlt.style.display = 'flex';
     } else {
+      _fillingFields = true;
       document.getElementById('ord-address').value = userData.address;
       document.getElementById('ord-neighborhood').value = userData.neighborhood || '';
+      _fillingFields = false;
       infoEl.className = 'checkout-address-info';
       infoEl.innerHTML = '<span>📍 Usando endereço padrão da sua conta</span>';
       btnAlt.style.display = 'flex';
@@ -1388,10 +1392,13 @@ function toggleAltAddress() {
 function undoAltAddress() {
   document.getElementById('checkout-address-info').className = 'checkout-address-info';
   document.getElementById('checkout-address-info').innerHTML = '<span>📍 Usando endereço padrão da sua conta</span>';
+  _fillingFields = true;
   document.getElementById('ord-address').value = userData.address || '';
   document.getElementById('ord-neighborhood').value = userData.neighborhood || '';
+  _fillingFields = false;
   lastFreight = null;
-  recalcCheckoutFee();
+  if (freightTimer) clearTimeout(freightTimer);
+  calcFreight().then(() => showCheckout());
 }
 
 async function submitOrder() {
