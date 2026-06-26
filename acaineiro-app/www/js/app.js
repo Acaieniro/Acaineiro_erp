@@ -1415,6 +1415,10 @@ async function submitOrder() {
 
   if (!name || !phone) { alert('Nome e telefone são obrigatórios!'); return; }
   if (!payment) { alert('Selecione a forma de pagamento!'); return; }
+  const orderType = document.querySelector('input[name="order_type"]:checked')?.value || 'delivery';
+  if (orderType !== 'pickup' && (!address || !neighborhood)) {
+    alert('Endereço e bairro são obrigatórios para entrega!'); return;
+  }
 
   let amount_paid = null, change_due = 0;
   const isPickup = document.querySelector('input[name="order_type"]:checked')?.value === 'pickup';
