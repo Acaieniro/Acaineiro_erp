@@ -1257,8 +1257,17 @@ function recalcCheckoutFee() {
 
 async function showCheckout() {
   if (!cart.length) { alert('Carrinho vazio!'); return; }
+
+  fillCheckoutData();
+
   const isPickup = document.querySelector('input[name="order_type"]:checked')?.value === 'pickup';
   const neighborhood = document.getElementById('ord-neighborhood')?.value || '';
+  const addr = document.getElementById('ord-address')?.value || '';
+
+  if (!isPickup && (addr || neighborhood) && lastFreight === null) {
+    await calcFreight();
+  }
+
   const fee = deliveryFeeFor(neighborhood, isPickup);
   const subtotal = cart.reduce((s, i) => s + (i.price * i.qty), 0);
   const discount = window.activeCoupon ? window.activeCoupon.discount : 0;
@@ -1287,40 +1296,22 @@ async function showCheckout() {
   }
 
   const feeEl = document.getElementById('checkout-fee');
+  const distEl = document.getElementById('checkout-distance');
   if (feeEl) {
     if (isPickup) {
       feeEl.textContent = 'Grátis (retirada)';
+      if (distEl) distEl.textContent = '';
     } else if (window.activeCoupon && window.activeCoupon.free_shipping) {
       feeEl.textContent = '🚚 Grátis';
+      if (distEl) distEl.textContent = '';
     } else {
       feeEl.textContent = `R$ ${fee.toFixed(2).replace('.',',')}`;
+      if (distEl) {
+        distEl.textContent = lastFreight?.distance_km ? `(${lastFreight.distance_km} km)` : '';
+      }
     }
   }
   document.getElementById('checkout-total').textContent = `R$ ${total.toFixed(2).replace('.',',')}`;
-
-  fillCheckoutData();
-
-  // Trigger freight calc if address is pre-filled
-  const addr = document.getElementById('ord-address')?.value || '';
-  const hood = document.getElementById('ord-neighborhood')?.value || '';
-  if ((addr || hood) && lastFreight === null) {
-    await calcFreight();
-    // Re-render fee/total with the calculated freight
-    const neighbor = document.getElementById('ord-neighborhood')?.value || '';
-    const fee2 = deliveryFeeFor(neighbor, isPickup);
-    const discount2 = window.activeCoupon ? window.activeCoupon.discount : 0;
-    const total2 = subtotal + fee2 - discount2;
-    if (feeEl) {
-      if (isPickup) {
-        feeEl.textContent = 'Grátis (retirada)';
-      } else if (window.activeCoupon && window.activeCoupon.free_shipping) {
-        feeEl.textContent = '🚚 Grátis';
-      } else {
-        feeEl.textContent = `R$ ${fee2.toFixed(2).replace('.',',')}`;
-      }
-    }
-    document.getElementById('checkout-total').textContent = `R$ ${total2.toFixed(2).replace('.',',')}`;
-  }
 
   // Restore coupon if active
   if (window.activeCoupon) {
