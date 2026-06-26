@@ -1350,10 +1350,16 @@ function fillCheckoutData() {
     if (infoEl.classList.contains('active')) {
       btnAlt.style.display = 'flex';
     } else {
-      _fillingFields = true;
-      document.getElementById('ord-address').value = userData.address;
-      document.getElementById('ord-neighborhood').value = userData.neighborhood || '';
-      _fillingFields = false;
+      const addrEl = document.getElementById('ord-address');
+      const hoodEl = document.getElementById('ord-neighborhood');
+      if (!addrEl.value && !hoodEl.value) {
+        _fillingFields = true;
+        addrEl.value = userData.address;
+        hoodEl.value = userData.neighborhood || '';
+        _fillingFields = false;
+      } else {
+        infoEl.classList.add('active');
+      }
       infoEl.className = 'checkout-address-info';
       infoEl.innerHTML = '<span>📍 Usando endereço padrão da sua conta</span>';
       btnAlt.style.display = 'flex';
