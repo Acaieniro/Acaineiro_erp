@@ -97,9 +97,15 @@ class EscPosBuilder {
     this.bold(false);
     this.line(`Nome: ${order.customer_name || ''}`);
     this.line(`Tel: ${order.customer_phone || ''}`);
-    if (order.customer_address) {
-      this.line(`End: ${order.customer_address || ''}`);
-      if (order.customer_neighborhood) this.line(`Bairro: ${order.customer_neighborhood}`);
+    const isPickup = order.order_type === 'pickup';
+    this.line(`Tipo: ${isPickup ? 'RETIRADA' : 'ENTREGA'}`);
+    if (isPickup) {
+      this.line(`🏪 Retirada na Loja`);
+    } else {
+      if (order.customer_address) {
+        this.line(`End: ${order.customer_address}`);
+        if (order.customer_neighborhood) this.line(`Bairro: ${order.customer_neighborhood}`);
+      }
     }
     if (order.notes) {
       this.line(`Obs: ${order.notes}`);

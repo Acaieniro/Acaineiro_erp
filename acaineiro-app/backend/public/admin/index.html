@@ -934,6 +934,7 @@
         <div style="font-size:10px;margin:4px 0;">
           <div>👤 ${esc(o.customer_name)}</div>
           <div>📞 ${esc(o.customer_phone)}</div>
+          <div>📋 ${o.order_type === 'pickup' ? 'RETIRADA' : 'ENTREGA'}</div>
           ${o.order_type === 'pickup' ? '<div>🏪 Retirada na Loja</div>' : (o.customer_address ? `<div>📍 ${esc(o.customer_address)}${o.customer_neighborhood ? ' - ' + esc(o.customer_neighborhood) : ''}</div>` : '')}
           ${o.notes ? `<div>📝 ${esc(o.notes)}</div>` : ''}
         </div>
