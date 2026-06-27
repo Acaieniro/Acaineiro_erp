@@ -1128,11 +1128,12 @@ async function applyCoupon() {
   if (!code) { feedback.innerHTML = '<span style="color:#888;">Digite um código</span>'; return; }
 
   const subtotal = cart.reduce((s, i) => s + (i.price * i.qty), 0);
+  const phone = userData?.phone || document.getElementById('ord-phone')?.value.trim() || '';
   try {
     const r = await fetch(`${API_URL}/api/coupons/validate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code, subtotal })
+      body: JSON.stringify({ code, subtotal, phone })
     }).then(r => r.json());
 
     if (r.error) {
@@ -1439,7 +1440,7 @@ async function submitOrder() {
   // Re-validar cupom antes de enviar
   if (couponCode) {
     try {
-      const v = await API.post('/api/coupons/validate', { code: couponCode, subtotal: totalCalc });
+      const v = await API.post('/api/coupons/validate', { code: couponCode, subtotal: totalCalc, phone });
       if (v.error) { couponCode = null; window.activeCoupon = null; }
     } catch (e) { couponCode = null; window.activeCoupon = null; }
   }
