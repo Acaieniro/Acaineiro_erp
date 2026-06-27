@@ -1129,11 +1129,12 @@ async function applyCoupon() {
 
   const subtotal = cart.reduce((s, i) => s + (i.price * i.qty), 0);
   const phone = userData?.phone || document.getElementById('ord-phone')?.value.trim() || '';
+  const cpf = userData?.cpf || '';
   try {
     const r = await fetch(`${API_URL}/api/coupons/validate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code, subtotal, phone })
+      body: JSON.stringify({ code, subtotal, phone, cpf })
     }).then(r => r.json());
 
     if (r.error) {
@@ -1440,7 +1441,7 @@ async function submitOrder() {
   // Re-validar cupom antes de enviar
   if (couponCode) {
     try {
-      const v = await API.post('/api/coupons/validate', { code: couponCode, subtotal: totalCalc, phone });
+      const v = await API.post('/api/coupons/validate', { code: couponCode, subtotal: totalCalc, phone, cpf: userData?.cpf || '' });
       if (v.error) { couponCode = null; window.activeCoupon = null; }
     } catch (e) { couponCode = null; window.activeCoupon = null; }
   }
@@ -1448,7 +1449,8 @@ async function submitOrder() {
   try {
     const paymentMethodDetail = payment.value === 'cartao' ? (document.querySelector('input[name="card_type"]:checked')?.value || '') : '';
     const order_type = document.querySelector('input[name="order_type"]:checked')?.value || 'delivery';
-    const r = await API.post('/api/orders', { customer: { name, phone, address, neighborhood }, items: cart.map(i => i.is_combo ? { id: i.id, name: i.name, description: i.description || '', price: i.price, qty: i.qty, icon: i.icon, is_combo: true, combo_items: i.items } : { id: i.id, name: i.name, description: i.description || '', price: i.price, qty: i.qty, icon: i.icon }), payment_method: payment.value, payment_method_detail: paymentMethodDetail, notes, amount_paid, change_due, coupon_code: couponCode, order_type });
+    const customerCpf = userData?.cpf || '';
+    const r = await API.post('/api/orders', { customer: { name, phone, address, neighborhood, cpf: customerCpf }, items: cart.map(i => i.is_combo ? { id: i.id, name: i.name, description: i.description || '', price: i.price, qty: i.qty, icon: i.icon, is_combo: true, combo_items: i.items } : { id: i.id, name: i.name, description: i.description || '', price: i.price, qty: i.qty, icon: i.icon }), payment_method: payment.value, payment_method_detail: paymentMethodDetail, notes, amount_paid, change_due, coupon_code: couponCode, order_type });
     // times_used é incrementado no backend ao criar o pedido
     window.activeCoupon = null;
     cupomResgatado = null;

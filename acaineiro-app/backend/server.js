@@ -206,9 +206,11 @@ async function initDB() {
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     coupon_code TEXT NOT NULL,
     phone TEXT NOT NULL,
+    cpf TEXT DEFAULT '',
     used_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(coupon_code, phone)
   )`);
+  try { await db.run("ALTER TABLE coupon_usage ADD COLUMN cpf TEXT DEFAULT ''"); } catch (e) {}
 
   // Migrations - safe to run repeatedly
   for (const sql of [
@@ -485,15 +487,21 @@ app.delete('/api/coupons/:id', adminAuth, async (req, res) => {
 });
 
 app.post('/api/coupons/validate', async (req, res) => {
-  const { code, subtotal, phone } = req.body;
+  const { code, subtotal, phone, cpf } = req.body;
   if (!code) return res.status(400).json({ error: 'Código obrigatório' });
   const now = new Date().toISOString();
   const coupon = await db.get("SELECT * FROM coupons WHERE code=? AND active=1 AND (expires_at IS NULL OR expires_at > ?)", code.toUpperCase(), now);
   if (!coupon) return res.status(400).json({ error: 'Cupom inválido ou expirado' });
   if (subtotal < coupon.min_value) return res.status(400).json({ error: `Valor mínimo de R$ ${coupon.min_value.toFixed(2).replace('.',',')} para usar este cupom` });
-  if (coupon.usage_limit > 0 && phone) {
-    const usage = await db.get('SELECT COUNT(*) as c FROM coupon_usage WHERE coupon_code=? AND phone=?', code.toUpperCase(), phone);
-    if (usage.c >= coupon.usage_limit) return res.status(400).json({ error: 'Você já atingiu o limite de uso deste cupom' });
+  if (coupon.usage_limit > 0) {
+    if (phone) {
+      const usage = await db.get('SELECT COUNT(*) as c FROM coupon_usage WHERE coupon_code=? AND phone=?', code.toUpperCase(), phone);
+      if (usage.c >= coupon.usage_limit) return res.status(400).json({ error: 'Você já atingiu o limite de uso deste cupom' });
+    }
+    if (cpf) {
+      const usage = await db.get('SELECT COUNT(*) as c FROM coupon_usage WHERE coupon_code=? AND cpf=?', code.toUpperCase(), cpf);
+      if (usage.c >= coupon.usage_limit) return res.status(400).json({ error: 'Você já atingiu o limite de uso deste cupom' });
+    }
   }
   const discount = coupon.discount_value > 0
     ? Math.min(coupon.discount_value, subtotal)
@@ -502,12 +510,12 @@ app.post('/api/coupons/validate', async (req, res) => {
 });
 
 app.post('/api/coupons/:id/use', async (req, res) => {
-  const { phone } = req.body;
+  const { phone, cpf } = req.body;
   if (phone) {
     const coupon = await db.get('SELECT code FROM coupons WHERE id=?', req.params.id);
     if (coupon) {
       try {
-        await db.run('INSERT OR IGNORE INTO coupon_usage (coupon_code, phone) VALUES (?,?)', coupon.code, phone);
+        await db.run('INSERT OR IGNORE INTO coupon_usage (coupon_code, phone, cpf) VALUES (?,?,?)', coupon.code, phone, cpf || '');
       } catch (e) {}
     }
   }
@@ -841,9 +849,15 @@ app.post('/api/orders', async (req, res) => {
     const now = new Date().toISOString();
     let coupon = await db.get("SELECT * FROM coupons WHERE code=? AND active=1 AND (expires_at IS NULL OR expires_at > ?)", coupon_code.toUpperCase(), now);
     if (coupon && subtotal >= coupon.min_value) {
-      if (coupon.usage_limit > 0 && customer.phone) {
-        const usage = await db.get('SELECT COUNT(*) as c FROM coupon_usage WHERE coupon_code=? AND phone=?', coupon_code.toUpperCase(), customer.phone);
-        if (usage.c >= coupon.usage_limit) { coupon = null; }
+      if (coupon.usage_limit > 0) {
+        if (customer.phone) {
+          const usage = await db.get('SELECT COUNT(*) as c FROM coupon_usage WHERE coupon_code=? AND phone=?', coupon_code.toUpperCase(), customer.phone);
+          if (usage.c >= coupon.usage_limit) { coupon = null; }
+        }
+        if (coupon && customer.cpf) {
+          const usage = await db.get('SELECT COUNT(*) as c FROM coupon_usage WHERE coupon_code=? AND cpf=?', coupon_code.toUpperCase(), customer.cpf);
+          if (usage.c >= coupon.usage_limit) { coupon = null; }
+        }
       }
     }
     if (coupon && subtotal >= coupon.min_value) {
@@ -859,7 +873,7 @@ app.post('/api/orders', async (req, res) => {
       await db.run('UPDATE coupons SET times_used = times_used + 1 WHERE id=?', coupon.id);
       if (customer.phone) {
         try {
-          await db.run('INSERT OR IGNORE INTO coupon_usage (coupon_code, phone) VALUES (?,?)', coupon_code.toUpperCase(), customer.phone);
+          await db.run('INSERT OR IGNORE INTO coupon_usage (coupon_code, phone, cpf) VALUES (?,?,?)', coupon_code.toUpperCase(), customer.phone, customer.cpf || '');
         } catch (e) {}
       }
     }
