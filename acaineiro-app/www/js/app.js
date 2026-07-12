@@ -1337,9 +1337,11 @@ async function showCheckout() {
       ? `✅ Cupom ${window.activeCoupon.code} — Frete Grátis!`
       : `✅ Cupom ${window.activeCoupon.code} aplicado! ${discLabel}`;
     document.getElementById('coupon-feedback').className = 'coupon-feedback success';
+  } else if (cupomResgatado && !window.activeCoupon) {
+    document.getElementById('coupon-input').value = cupomResgatado;
+    await applyCoupon();
   } else {
     hideCouponApplied();
-    if (cupomResgatado) document.getElementById('coupon-input').value = cupomResgatado;
   }
 
   toggleTroco();
