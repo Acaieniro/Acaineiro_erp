@@ -560,22 +560,7 @@ async function resgatarProdutoFidelidade(dataset) {
   if (toast) { toast.textContent = `🎉 ${productName} grátis adicionado ao carrinho!`; toast.style.display = 'block'; toast.style.opacity = '1'; setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.style.display = 'none', 300); }, 3000); }
 }
 async function resgatarCupom(code, discountPercent, discountValue) {
-  cupomResgatado = code;
-  localStorage.setItem('cupomResgatado', code);
-  const pct = parseFloat(discountPercent || 0);
-  const val = parseFloat(discountValue || 0);
-  const label = pct > 0 ? `-${pct}%` : `-R$ ${val.toFixed(2).replace('.',',')}`;
-  const toast = document.getElementById('toast');
-  if (toast) {
-    toast.textContent = `🎉 Cupom ${code} resgatado! (${label})`;
-    toast.style.display = 'block';
-    toast.style.opacity = '1';
-    setTimeout(() => {
-      toast.style.opacity = '0';
-      setTimeout(() => toast.style.display = 'none', 300);
-    }, 3000);
-  }
-  // Marcar como resgatado na API para nao aparecer mais na lista
+  // Sinaliza que um cupom foi resgatado (p/ n�o exibir na lista)
   try {
     await API.post('/api/loyalty/redeem-product', { coupon_code: code });
   } catch (e) {}
@@ -588,13 +573,20 @@ async function resgatarCupom(code, discountPercent, discountValue) {
     }
   });
   window.activeCoupon = null;
-  toast.textContent = `🎉 Cupom ${code} resgatado! Use o código no checkout.`;
-  toast.style.display = 'block';
-  toast.style.opacity = '1';
-  setTimeout(() => {
-    toast.style.opacity = '0';
-    setTimeout(() => toast.style.display = 'none', 300);
-  }, 3000);
+  if (typeof cupomResgatado !== 'undefined') {
+    cupomResgatado = null;
+    localStorage.removeItem('cupomResgatado');
+  }
+  const toast = document.getElementById('toast');
+  if (toast) {
+    toast.textContent = `🎉 Cupom ${code} resgatado! Digite o código no checkout.`;
+    toast.style.display = 'block';
+    toast.style.opacity = '1';
+    setTimeout(() => {
+      toast.style.opacity = '0';
+      setTimeout(() => toast.style.display = 'none', 300);
+    }, 3000);
+  }
 }
 async function renderCupomDoDia() {
   const el = document.getElementById('cupom-do-dia');
@@ -1346,8 +1338,6 @@ async function showCheckout() {
       ? `✅ Cupom ${window.activeCoupon.code} — Frete Grátis!`
       : `✅ Cupom ${window.activeCoupon.code} aplicado! ${discLabel}`;
     document.getElementById('coupon-feedback').className = 'coupon-feedback success';
-  } else if (cupomResgatado && !window.activeCoupon) {
-    document.getElementById('coupon-input').value = cupomResgatado;
   } else {
     hideCouponApplied();
   }
