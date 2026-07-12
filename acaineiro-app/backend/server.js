@@ -55,7 +55,8 @@ if (useMySQL) {
   db = {
     run: async (sql, ...params) => {
       sql = sql.replace(/INSERT OR REPLACE INTO/gi, 'REPLACE INTO')
-               .replace(/INSERT OR IGNORE INTO/gi, 'INSERT IGNORE INTO');
+               .replace(/INSERT OR IGNORE INTO/gi, 'INSERT IGNORE INTO')
+               .replace(/ON CONFLICT\([^)]+\) DO UPDATE SET /gi, 'ON DUPLICATE KEY UPDATE ');
       const [r] = await pool.execute(sql, params);
       return { changes: r.affectedRows, lastInsertRowid: r.insertId };
     },
