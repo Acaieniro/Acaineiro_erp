@@ -1169,8 +1169,8 @@ function showCouponApplied(code, percent, discount, freeShipping) {
 }
 
 function hideCouponApplied() {
-  document.getElementById('coupon-input-row').style.display = 'none';
-  document.getElementById('coupon-select-row').style.display = 'flex';
+  document.getElementById('coupon-input-row').style.display = 'flex';
+  document.getElementById('coupon-select-row').style.display = 'none';
   document.getElementById('coupon-applied-row').style.display = 'none';
   document.getElementById('coupon-feedback').className = 'coupon-feedback';
   document.getElementById('coupon-feedback').innerHTML = '';
