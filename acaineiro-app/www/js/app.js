@@ -587,41 +587,14 @@ async function resgatarCupom(code, discountPercent, discountValue) {
       btn.disabled = true;
     }
   });
-  // Validar e aplicar o cupom
-  redirectToCheckout = false;
-  try {
-    const subtotal = cart.reduce((s, i) => s + (i.price * i.qty), 0);
-    const phone = userData?.phone || document.getElementById('ord-phone')?.value.trim() || '';
-    const cpf = userData?.cpf || '';
-    const r = await fetch(`${API_URL}/api/coupons/validate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code, subtotal, phone, cpf })
-    }).then(r => r.json());
-    if (!r.error) {
-      window.activeCoupon = r;
-    }
-  } catch (e) {
-    console.error('Erro ao aplicar cupom:', e);
-  }
-  // Ir ao checkout se tiver itens no carrinho, senão avisa que ta pronto
-  if (cart.length) {
-    setTimeout(() => {
-      navigateTo('checkout');
-      showCheckout();
-    }, 400);
-  } else {
-    const toast = document.getElementById('toast');
-    if (toast) {
-      toast.textContent = '🎉 Cupom ativado! Adicione produtos e vá ao checkout.';
-      toast.style.display = 'block';
-      toast.style.opacity = '1';
-      setTimeout(() => {
-        toast.style.opacity = '0';
-        setTimeout(() => toast.style.display = 'none', 300);
-      }, 3000);
-    }
-  }
+  window.activeCoupon = null;
+  toast.textContent = `🎉 Cupom ${code} resgatado! Use o código no checkout.`;
+  toast.style.display = 'block';
+  toast.style.opacity = '1';
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    setTimeout(() => toast.style.display = 'none', 300);
+  }, 3000);
 }
 async function renderCupomDoDia() {
   const el = document.getElementById('cupom-do-dia');
@@ -1375,7 +1348,6 @@ async function showCheckout() {
     document.getElementById('coupon-feedback').className = 'coupon-feedback success';
   } else if (cupomResgatado && !window.activeCoupon) {
     document.getElementById('coupon-input').value = cupomResgatado;
-    await applyCoupon();
   } else {
     hideCouponApplied();
   }
