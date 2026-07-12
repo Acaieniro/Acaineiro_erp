@@ -532,12 +532,7 @@ function comboModalAddToCart() {
 
 // ─── COUPOM DO DIA (HOME) ───
 function irResgatarCupom() {
-  if (cupomResgatado) {
-    document.getElementById('coupon-input').value = cupomResgatado;
-    applyCoupon();
-  } else {
-    navigateTo('cupons');
-  }
+  navigateTo('cupons');
 }
 async function resgatarProdutoFidelidade(dataset) {
   const { code, productId, productName, productPrice } = dataset;
@@ -564,14 +559,13 @@ async function resgatarProdutoFidelidade(dataset) {
   if (toast) { toast.textContent = `🎉 ${productName} grátis adicionado ao carrinho!`; toast.style.display = 'block'; toast.style.opacity = '1'; setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.style.display = 'none', 300); }, 3000); }
 }
 async function resgatarCupom(code, discountPercent, discountValue) {
-  // Salva cupom p/ aplicar automaticamente no checkout
   cupomResgatado = code;
   localStorage.setItem('cupomResgatado', code);
-  // Sinaliza que foi resgatado (não aparece mais na lista)
+  const info = { code, discount_percent: discountPercent, discount_value: discountValue };
+  localStorage.setItem('cupomResgatadoInfo', JSON.stringify(info));
   try {
     await API.post('/api/loyalty/redeem-product', { coupon_code: code });
   } catch (e) {}
-  // Update all buttons on cupons page
   document.querySelectorAll('.coupon-page-btn').forEach(btn => {
     if (btn.dataset.code === code) {
       btn.textContent = '✅ Resgatado';
@@ -582,13 +576,23 @@ async function resgatarCupom(code, discountPercent, discountValue) {
   window.activeCoupon = null;
   const toast = document.getElementById('toast');
   if (toast) {
-    toast.textContent = `🎉 Cupom ${code} resgatado! Vá ao checkout e clique em Aplicar.`;
+    toast.textContent = `🎉 Cupom ${code} resgatado! Vá ao checkout, clique em Escolher Cupom e use o cupom.`;
     toast.style.display = 'block';
     toast.style.opacity = '1';
     setTimeout(() => {
       toast.style.opacity = '0';
       setTimeout(() => toast.style.display = 'none', 300);
     }, 3000);
+  }
+}
+async function aplicarCupomSalvo() {
+  const saved = JSON.parse(localStorage.getItem('cupomResgatadoInfo'));
+  if (!saved) return;
+  document.getElementById('coupon-input').value = saved.code;
+  await applyCoupon();
+  if (window.activeCoupon) {
+    navigateTo('checkout');
+    showCheckout();
   }
 }
 async function renderCupomDoDia() {
@@ -658,6 +662,22 @@ async function renderCouponsPage() {
               image_url: localReward.image_url || ''
             });
           }
+        }
+        // Show saved/resgatado coupon card if exists
+        const cupomSalvo = JSON.parse(localStorage.getItem('cupomResgatadoInfo') || 'null');
+        if (cupomSalvo && !loyaltyRewards.find(r => r.coupon_code === cupomSalvo.code)) {
+          const isPct = parseFloat(cupomSalvo.discount_percent || 0) > 0;
+          const discLabel = isPct ? `${cupomSalvo.discount_percent}% de desconto` : `R$ ${parseFloat(cupomSalvo.discount_value || 0).toFixed(2).replace('.',',')} de desconto`;
+          html += `<div style="margin-bottom:12px;font-size:13px;color:var(--text-tertiary);font-weight:600;">🎁 Seus cupons de fidelidade</div>`;
+          html += `
+          <div class="coupon-page-card" style="border:2px solid #fbbf24;">
+            <div class="coupon-page-body">
+              <div class="coupon-page-code" style="color:#b45309;">${cupomSalvo.code}</div>
+              <div class="coupon-page-desc">Cupom de fidelidade resgatado</div>
+              <div class="coupon-page-discount" style="background:#fef3c7;color:#b45309;">${discLabel}</div>
+              <button class="coupon-page-btn resgatar" onclick="aplicarCupomSalvo()">🏷️ Usar Cupom</button>
+            </div>
+          </div>`;
         }
         if (loyaltyRewards.length) {
           html += `<div style="margin-bottom:12px;font-size:13px;color:var(--text-tertiary);font-weight:600;">🎁 Seus cupons de fidelidade</div>`;
@@ -1138,6 +1158,7 @@ async function applyCoupon() {
       window.activeCoupon = null;
       cupomResgatado = null;
       localStorage.removeItem('cupomResgatado');
+      localStorage.removeItem('cupomResgatadoInfo');
       hideCouponApplied();
       return;
     }
@@ -1145,6 +1166,7 @@ async function applyCoupon() {
     window.activeCoupon = r;
     cupomResgatado = null;
     localStorage.removeItem('cupomResgatado');
+    localStorage.removeItem('cupomResgatadoInfo');
     if (r.free_shipping) {
       feedback.innerHTML = `✅ Cupom ${r.code} — 🚚 Frete Grátis!`;
     } else {
@@ -1344,7 +1366,11 @@ async function showCheckout() {
       : `✅ Cupom ${window.activeCoupon.code} aplicado! ${discLabel}`;
     document.getElementById('coupon-feedback').className = 'coupon-feedback success';
   } else {
-    hideCouponApplied();
+    document.getElementById('coupon-input-row').style.display = 'none';
+    document.getElementById('coupon-select-row').style.display = 'flex';
+    document.getElementById('coupon-applied-row').style.display = 'none';
+    document.getElementById('coupon-feedback').className = 'coupon-feedback';
+    document.getElementById('coupon-feedback').innerHTML = '';
   }
 
   toggleTroco();
