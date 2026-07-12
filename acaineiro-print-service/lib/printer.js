@@ -97,9 +97,15 @@ class EscPosBuilder {
     this.bold(false);
     this.line(`Nome: ${order.customer_name || ''}`);
     this.line(`Tel: ${order.customer_phone || ''}`);
-    if (order.customer_address) {
-      this.line(`End: ${order.customer_address || ''}`);
-      if (order.customer_neighborhood) this.line(`Bairro: ${order.customer_neighborhood}`);
+    const isPickup = order.order_type === 'pickup';
+    this.line(`Tipo: ${isPickup ? 'RETIRADA' : 'ENTREGA'}`);
+    if (isPickup) {
+      this.line(`🏪 Retirada na Loja`);
+    } else {
+      if (order.customer_address) {
+        this.line(`End: ${order.customer_address}`);
+        if (order.customer_neighborhood) this.line(`Bairro: ${order.customer_neighborhood}`);
+      }
     }
     if (order.notes) {
       this.line(`Obs: ${order.notes}`);
@@ -141,7 +147,7 @@ class EscPosBuilder {
     this.bold(false);
     this.align(0);
     if (parseFloat(order.delivery_fee) > 0) {
-      this.line(`Frete: R$ ${parseFloat(order.delivery_fee).toFixed(2).replace('.', ',')}`);
+      this.line(`Taxa de Entrega: R$ ${parseFloat(order.delivery_fee).toFixed(2).replace('.', ',')}`);
     }
     if (order.coupon_code) {
       this.line(`Cupom: ${order.coupon_code}`);

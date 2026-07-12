@@ -1,4 +1,5 @@
 const express = require('express');
+const compression = require('compression');
 const cors = require('cors');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -88,6 +89,7 @@ if (useMySQL) {
 }
 
 app.use(cors());
+app.use(compression());
 app.use(express.json({ limit: '50mb' }));
 const PUBLIC = path.join(__dirname, 'public');
 app.use(express.static(PUBLIC, {
@@ -354,7 +356,7 @@ async function initDB() {
 }
 
 async function getSettings() {
-  const rows = await db.all('SELECT key, value FROM settings');
+  const rows = await db.all('SELECT `key`, `value` FROM settings');
   const s = {};
   for (const r of rows) s[r.key] = r.value;
   return s;
@@ -752,11 +754,11 @@ app.get('/api/settings', async (req, res) => {
 
 app.put('/api/settings', adminAuth, async (req, res) => {
   for (const [k, v] of Object.entries(req.body)) {
-    await db.run('INSERT OR REPLACE INTO settings (key, value) VALUES (?,?)', k, String(v));
+    await db.run('INSERT OR REPLACE INTO settings (`key`, `value`) VALUES (?,?)', k, String(v));
   }
   // Se trocou a chave de mapa, limpa cache de coordenadas da loja pra forçar re-geocode
   if (req.body.here_key !== undefined || req.body.locationiq_key !== undefined) {
-    await db.run("DELETE FROM settings WHERE key IN ('store_lat','store_lng')");
+    await db.run("DELETE FROM settings WHERE `key` IN ('store_lat','store_lng')");
   }
   if (req.body.flash_hours !== undefined || req.body.flash_minutes !== undefined) {
     const s = await getSettings();
@@ -764,7 +766,7 @@ app.put('/api/settings', adminAuth, async (req, res) => {
     const minutes = parseInt(req.body.flash_minutes ?? s.flash_minutes ?? '30');
     const d = new Date();
     d.setHours(d.getHours() + hours, d.getMinutes() + minutes, 0, 0);
-    await db.run('INSERT OR REPLACE INTO settings (key, value) VALUES (?,?)', 'flash_end_time', d.toISOString());
+    await db.run('INSERT OR REPLACE INTO settings (`key`, `value`) VALUES (?,?)', 'flash_end_time', d.toISOString());
   }
   await touchSync('settings');
   res.json({ ok: true });
@@ -797,8 +799,8 @@ async function calcDistance(address, settings) {
           slat = sGeo[0].lat; slon = sGeo[0].lon;
         } else return null;
       }
-      await db.run('INSERT OR REPLACE INTO settings (key,value) VALUES (?,?)', 'store_lat', String(slat));
-      await db.run('INSERT OR REPLACE INTO settings (key,value) VALUES (?,?)', 'store_lng', String(slon));
+      await db.run('INSERT OR REPLACE INTO settings (`key`,`value`) VALUES (?,?)', 'store_lat', String(slat));
+      await db.run('INSERT OR REPLACE INTO settings (`key`,`value`) VALUES (?,?)', 'store_lng', String(slon));
     }
     // Geocode customer address (append state from store address to improve accuracy for multi-city neighborhoods)
     const storeUF = storeAddr.split('-').pop().trim().split(',').pop()?.trim();
@@ -1001,18 +1003,13 @@ app.put('/api/orders/:id/confirm', async (req, res) => {
   try {
     const phone = updated.customer_phone;
     if (phone) {
-      let loyalty = await db.get('SELECT * FROM loyalty WHERE phone=?', phone);
-      if (!loyalty) {
-        await db.run('INSERT INTO loyalty (phone, count) VALUES (?, 1)', phone);
-        loyalty = { count: 1 };
-      } else {
-        await db.run('UPDATE loyalty SET count = count + 1 WHERE phone=?', phone);
-        loyalty.count += 1;
-      }
+      await db.run('INSERT INTO loyalty (phone, count) VALUES (?, 1) ON CONFLICT(phone) DO UPDATE SET count = count + 1', phone);
+      const loyaltyRow = await db.get('SELECT count FROM loyalty WHERE phone=?', phone);
+      const currentCount = loyaltyRow ? loyaltyRow.count : 1;
       const settings = await getSettings();
       const loyaltyGoal = parseInt(settings.loyalty_goal) || 10;
       updated.loyaltyGoal = loyaltyGoal;
-      if (loyalty.count >= loyaltyGoal) {
+      if (currentCount >= loyaltyGoal) {
         const rewardProductId = parseInt(settings.loyalty_reward_product_id) || 0;
         let rewardCreated = false;
         if (rewardProductId > 0) {
@@ -1044,9 +1041,9 @@ app.put('/api/orders/:id/confirm', async (req, res) => {
         }
         // Sempre resetar count quando a meta for atingida
         await db.run('UPDATE loyalty SET count = 0 WHERE phone=?', phone);
-        loyalty.count = 0;
       }
-      updated.loyaltyCount = loyalty.count;
+      const finalRow = await db.get('SELECT count FROM loyalty WHERE phone=?', phone);
+      updated.loyaltyCount = finalRow ? finalRow.count : 0;
     }
   } catch (e) {
     console.error('Erro no loyalty:', e);
