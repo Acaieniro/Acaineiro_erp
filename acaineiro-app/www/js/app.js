@@ -1159,7 +1159,7 @@ async function applyCoupon() {
       cupomResgatado = null;
       localStorage.removeItem('cupomResgatado');
       localStorage.removeItem('cupomResgatadoInfo');
-      hideCouponApplied();
+      showCouponSelector();
       return;
     }
 
@@ -1184,7 +1184,6 @@ async function applyCoupon() {
 }
 
 function showCouponApplied(code, percent, discount, freeShipping) {
-  document.getElementById('coupon-input-row').style.display = 'none';
   document.getElementById('coupon-select-row').style.display = 'none';
   const row = document.getElementById('coupon-applied-row');
   row.style.display = 'flex';
@@ -1195,9 +1194,8 @@ function showCouponApplied(code, percent, discount, freeShipping) {
   document.getElementById('coupon-applied-discount').textContent = label;
 }
 
-function hideCouponApplied() {
-  document.getElementById('coupon-input-row').style.display = 'flex';
-  document.getElementById('coupon-select-row').style.display = 'none';
+function showCouponSelector() {
+  document.getElementById('coupon-select-row').style.display = 'flex';
   document.getElementById('coupon-applied-row').style.display = 'none';
   document.getElementById('coupon-feedback').className = 'coupon-feedback';
   document.getElementById('coupon-feedback').innerHTML = '';
@@ -1237,7 +1235,7 @@ function removeCoupon() {
   cupomResgatado = null;
   localStorage.removeItem('cupomResgatado');
   document.getElementById('coupon-input').value = '';
-  hideCouponApplied();
+  showCouponSelector();
   updateCheckoutWithCoupon();
   if (freightTimer) clearTimeout(freightTimer);
   calcFreight().then(() => showCheckout());
@@ -1366,11 +1364,7 @@ async function showCheckout() {
       : `✅ Cupom ${window.activeCoupon.code} aplicado! ${discLabel}`;
     document.getElementById('coupon-feedback').className = 'coupon-feedback success';
   } else {
-    document.getElementById('coupon-input-row').style.display = 'none';
-    document.getElementById('coupon-select-row').style.display = 'flex';
-    document.getElementById('coupon-applied-row').style.display = 'none';
-    document.getElementById('coupon-feedback').className = 'coupon-feedback';
-    document.getElementById('coupon-feedback').innerHTML = '';
+    showCouponSelector();
   }
 
   toggleTroco();

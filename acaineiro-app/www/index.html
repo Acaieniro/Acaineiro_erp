@@ -231,11 +231,8 @@
           <textarea id="ord-notes" rows="3" placeholder="Observações (opcional)" class="checkout-input" style="min-height:70px;resize:vertical;"></textarea>
 
           <h3>🎟️ Cupom de Desconto</h3>
+          <input type="hidden" id="coupon-input">
           <div class="coupon-section" id="coupon-section">
-            <div class="coupon-input-row" id="coupon-input-row" style="display:none;">
-              <input type="text" id="coupon-input" class="checkout-input" placeholder="Digite o código do cupom" style="text-transform:uppercase;margin-bottom:0;">
-              <button class="coupon-apply-btn" onclick="applyCoupon()">Aplicar</button>
-            </div>
             <div class="coupon-select-row" id="coupon-select-row">
               <button class="coupon-select-btn" onclick="irResgatarCupom()">🏷️ Escolher Cupom</button>
             </div>
