@@ -1064,21 +1064,36 @@ app.post('/api/loyalty/force-reward', adminAuth, async (req, res) => {
   const { phone } = req.body;
   if (!phone) return res.status(400).json({ error: 'Telefone obrigatório' });
   const settings = await getSettings();
-  const rewardType = settings.loyalty_reward_type || 'fixed';
-  const rewardValue = parseFloat(settings.loyalty_reward_value || settings.loyalty_reward || 20);
-  const rewardDesc = settings.loyalty_reward_desc || (rewardType === 'percent' ? `${rewardValue}% de desconto no próximo pedido` : `R$ ${rewardValue.toFixed(2).replace('.',',')} de desconto`);
-  const rewardImage = settings.loyalty_reward_image || '';
+  const rewardProductId = parseInt(settings.loyalty_reward_product_id) || 0;
   const couponCode = `FIDEL-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
-  if (rewardType === 'percent') {
-    await db.run('INSERT INTO coupons (code, discount_percent, discount_value, description, image_url, active, usage_limit) VALUES (?,?,0,?,?,1,1)',
-      couponCode, rewardValue, `🎉 ${rewardDesc}`, rewardImage);
-  } else {
-    await db.run('INSERT INTO coupons (code, discount_percent, discount_value, description, image_url, active, usage_limit) VALUES (?,0,?,?,?,1,1)',
-      couponCode, rewardValue, `🎉 ${rewardDesc}`, rewardImage);
+  let rewardCreated = false;
+  if (rewardProductId > 0) {
+    const product = await db.get('SELECT * FROM products WHERE id=?', rewardProductId);
+    if (product) {
+      await db.run('INSERT INTO coupons (code, discount_percent, discount_value, description, image_url, active, usage_limit) VALUES (?,0,?,?,?,1,1)',
+        couponCode, product.price, `🎉 Grátis: ${product.name}`, product.image_url || '');
+      await db.run('INSERT INTO loyalty_rewards (phone, coupon_code, reward_product_id) VALUES (?,?,?)', phone, couponCode, rewardProductId);
+      rewardCreated = true;
+      await db.run('UPDATE loyalty SET count = 0 WHERE phone=?', phone);
+      return res.json({ code: couponCode, value: product.price, type: 'product', desc: `Grátis: ${product.name}`, product_id: rewardProductId, product_name: product.name, image_url: product.image_url || '' });
+    }
   }
-  await db.run('INSERT INTO loyalty_rewards (phone, coupon_code) VALUES (?,?)', phone, couponCode);
-  await db.run('UPDATE loyalty SET count = 0 WHERE phone=?', phone);
-  res.json({ code: couponCode, value: rewardValue, type: rewardType });
+  if (!rewardCreated) {
+    const rewardType = settings.loyalty_reward_type || 'fixed';
+    const rewardValue = parseFloat(settings.loyalty_reward_value || settings.loyalty_reward || 20);
+    const rewardDesc = settings.loyalty_reward_desc || (rewardType === 'percent' ? `${rewardValue}% de desconto no próximo pedido` : `R$ ${rewardValue.toFixed(2).replace('.',',')} de desconto`);
+    const rewardImage = settings.loyalty_reward_image || '';
+    if (rewardType === 'percent') {
+      await db.run('INSERT INTO coupons (code, discount_percent, discount_value, description, image_url, active, usage_limit) VALUES (?,?,0,?,?,1,1)',
+        couponCode, rewardValue, `🎉 ${rewardDesc}`, rewardImage);
+    } else {
+      await db.run('INSERT INTO coupons (code, discount_percent, discount_value, description, image_url, active, usage_limit) VALUES (?,0,?,?,?,1,1)',
+        couponCode, rewardValue, `🎉 ${rewardDesc}`, rewardImage);
+    }
+    await db.run('INSERT INTO loyalty_rewards (phone, coupon_code) VALUES (?,?)', phone, couponCode);
+    await db.run('UPDATE loyalty SET count = 0 WHERE phone=?', phone);
+    res.json({ code: couponCode, value: rewardValue, type: rewardType, desc: rewardDesc, image_url: rewardImage });
+  }
 });
 
 app.post('/api/orders/:id/cancel-customer', async (req, res) => {

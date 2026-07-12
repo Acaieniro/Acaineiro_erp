@@ -2262,7 +2262,7 @@
       if (!phone) { toast('Digite o telefone do cliente'); return; }
       try {
         const r = await api('/api/loyalty/force-reward', { method: 'POST', body: JSON.stringify({ phone }) });
-        toast(`🎉 Recompensa gerada! Cupom: ${r.code}`);
+        toast(r.type === 'product' ? `🎉 Recompensa gerada! Cupom: ${r.code} — ${r.desc || 'Produto grátis'}` : `🎉 Recompensa gerada! Cupom: ${r.code}`);
         loadLoyaltySettings();
       } catch (e) { toast('Erro: ' + e.message); }
     }
