@@ -916,6 +916,10 @@ app.post('/api/orders', async (req, res) => {
           await db.run('INSERT OR IGNORE INTO coupon_usage (coupon_code, phone, cpf) VALUES (?,?,?)', coupon_code.toUpperCase(), customer.phone, customer.cpf || '');
         } catch (e) {}
       }
+      // Se for cupom de fidelidade, marca o reward como redeemed
+      if (coupon_code.toUpperCase().startsWith('FIDEL-')) {
+        try { await db.run("UPDATE loyalty_rewards SET redeemed_at=CURRENT_TIMESTAMP WHERE coupon_code=? AND redeemed_at IS NULL", coupon_code.toUpperCase()); } catch (e) {}
+      }
     }
   }
 

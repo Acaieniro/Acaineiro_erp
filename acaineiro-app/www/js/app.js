@@ -587,29 +587,27 @@ async function resgatarCupom(code, discountPercent, discountValue) {
       btn.disabled = true;
     }
   });
-  // Validar e aplicar o cupom imediatamente antes de voltar ao checkout
-  if (redirectToCheckout) {
-    redirectToCheckout = false;
-    try {
-      const subtotal = cart.reduce((s, i) => s + (i.price * i.qty), 0);
-      const phone = userData?.phone || document.getElementById('ord-phone')?.value.trim() || '';
-      const cpf = userData?.cpf || '';
-      const r = await fetch(`${API_URL}/api/coupons/validate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code, subtotal, phone, cpf })
-      }).then(r => r.json());
-      if (!r.error) {
-        window.activeCoupon = r;
-      }
-    } catch (e) {
-      console.error('Erro ao aplicar cupom:', e);
+  // Validar e aplicar o cupom imediatamente e ir ao checkout
+  redirectToCheckout = false;
+  try {
+    const subtotal = cart.reduce((s, i) => s + (i.price * i.qty), 0);
+    const phone = userData?.phone || document.getElementById('ord-phone')?.value.trim() || '';
+    const cpf = userData?.cpf || '';
+    const r = await fetch(`${API_URL}/api/coupons/validate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code, subtotal, phone, cpf })
+    }).then(r => r.json());
+    if (!r.error) {
+      window.activeCoupon = r;
     }
-    setTimeout(() => {
-      navigateTo('checkout');
-      showCheckout();
-    }, 400);
+  } catch (e) {
+    console.error('Erro ao aplicar cupom:', e);
   }
+  setTimeout(() => {
+    navigateTo('checkout');
+    showCheckout();
+  }, 400);
 }
 async function renderCupomDoDia() {
   const el = document.getElementById('cupom-do-dia');

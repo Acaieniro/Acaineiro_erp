@@ -1,0 +1,24 @@
+[26/06/2026, 21:17:09] === AÇAINEIRO - Serviço de Impressão ===
+[26/06/2026, 21:17:10] Turso conectado! 9 pedidos
+[26/06/2026, 21:17:12] Impressora: usb
+[26/06/2026, 21:17:12] Monitorando a cada 5s...
+[26/06/2026, 21:17:12] UNCAUGHT: listen EADDRINUSE: address already in use 127.0.0.1:3099
+[26/06/2026, 21:22:06] === AÇAINEIRO - Serviço de Impressão ===
+[26/06/2026, 21:22:06] Turso conectado! 9 pedidos
+[26/06/2026, 21:22:08] Impressora: usb
+[26/06/2026, 21:22:08] Monitorando a cada 5s...
+[26/06/2026, 21:22:08] API HTTP em http://127.0.0.1:3099/api/print/status
+[26/06/2026, 21:22:21] === AÇAINEIRO - Serviço de Impressão ===
+[26/06/2026, 21:22:21] Turso conectado! 9 pedidos
+[26/06/2026, 21:22:22] Impressora: usb
+[26/06/2026, 21:22:22] Monitorando a cada 5s...
+[26/06/2026, 21:22:22] API HTTP em http://127.0.0.1:3099/api/print/status
+[26/06/2026, 21:25:03] === AÇAINEIRO - Serviço de Impressão ===
+[26/06/2026, 21:25:04] Turso conectado! 9 pedidos
+[26/06/2026, 21:25:04] Impressora: usb
+[26/06/2026, 21:25:04] Monitorando a cada 5s...
+[26/06/2026, 21:25:04] API HTTP em http://127.0.0.1:3099/api/print/status
+[26/06/2026, 21:31:10] Imprimindo pedido #93 - Allison Rodrigo
+[26/06/2026, 21:31:10] Pedido #93 impresso!
+[27/06/2026, 00:50:07] Erro na consulta: fetch failed
+[27/06/2026, 00:50:15] Erro na consulta: fetch failed
