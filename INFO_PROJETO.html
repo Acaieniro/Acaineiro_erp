@@ -31,10 +31,9 @@
 <h2>🔗 URLs</h2>
 <table>
   <tr><th>Serviço</th><th>URL</th></tr>
-  <tr><td>Painel Admin</td><td><a class="url" href="https://sistemaacaineiro.netlify.app/admin/" target="_blank">sistemaacaineiro.netlify.app/admin/</a></td></tr>
-  <tr><td>Site Cliente (PWA)</td><td><a class="url" href="https://sistemaacaineiro.netlify.app/" target="_blank">sistemaacaineiro.netlify.app</a></td></tr>
+  <tr><td>Painel Admin</td><td><a class="url" href="https://sistemaacaineiro.sistemtech.com.br/admin/" target="_blank">sistemaacaineiro.sistemtech.com.br/admin/</a></td></tr>
+  <tr><td>Site Cliente (PWA)</td><td><a class="url" href="https://sistemaacaineiro.sistemtech.com.br/" target="_blank">sistemaacaineiro.sistemtech.com.br</a></td></tr>
   <tr><td>GitHub</td><td><a class="url" href="https://github.com/Acaieniro/Acaineiro_erp" target="_blank">github.com/Acaieniro/Acaineiro_erp</a></td></tr>
-  <tr><td>Netlify (Deploys)</td><td><a class="url" href="https://app.netlify.com/projects/sistemaacaineiro/overview" target="_blank">app.netlify.com/projects/sistemaacaineiro/overview</a></td></tr>
   <tr><td>Turso (Banco)</td><td><a class="url" href="https://app.turso.tech/acaieniro?group=default" target="_blank">app.turso.tech/acaieniro?group=default</a></td></tr>
 </table>
 
@@ -42,7 +41,7 @@
 <table>
   <tr><th>Serviço</th><th>Email</th><th>Senha</th></tr>
   <tr><td>Todos (padrão)</td><td>acaineiro3@gmail.com</td><td rowspan="2" style="font-weight:600;color:#6C3FB5;">acaineiro@2026.</td></tr>
-  <tr><td>Netlify</td><td>acaineiro04@gmail.com</td></tr>
+  <tr><td>cPanel</td><td>sistemtechcom</td></tr>
 </table>
 
 <h2>⚙️ Stack</h2>
@@ -51,7 +50,7 @@
   <tr><td>Frontend Admin</td><td>HTML/CSS/JS puro (arquivo único)</td></tr>
   <tr><td>Banco de Dados</td><td>Turso (SQLite cloud, libsql)</td></tr>
   <tr><td>Imagens</td><td>Cloudinary</td></tr>
-  <tr><td>Hospedagem</td><td>Netlify (serverless functions)</td></tr>
+  <tr><td>Hospedagem</td><td>cPanel (Node.js)</td></tr>
   <tr><td>Impressão</td><td>Print-agent local (Node.js + USB)</td></tr>
   <tr><td>PWA Cliente</td><td>www/ (copiado no build)</td></tr>
 </table>
@@ -59,7 +58,7 @@
 <h2>📌 Observações</h2>
 <table>
   <tr><td><strong>Admin Password</strong></td><td>Hardcoded no código como <code>acaineiro@2026.</code> — não precisa configurar env var</td></tr>
-  <tr><td><strong>Turso / Cloudinary</strong></td><td>Tokens estão no arquivo <code>.env</code> local (<code>backend/.env</code>) e configurados como env vars no Netlify</td></tr>
+  <tr><td><strong>Turso / Cloudinary</strong></td><td>Tokens estão no arquivo <code>.env</code> local (<code>backend/.env</code>) e configurados como env vars no cPanel</td></tr>
   <tr><td><strong>Print-agent</strong></td><td>Pasta separada <code>acaineiro-print-service/</code> para instalar no PC da loja</td></tr>
 </table>
 
@@ -67,7 +66,7 @@
 <table>
   <tr><th>Ação</th><th>Comando</th></tr>
   <tr><td>Rodar local</td><td>npm start (na pasta backend/)</td></tr>
-  <tr><td>Deploy Netlify</td><td>npm run netlify (ou push no master)</td></tr>
+  <tr><td>Deploy</td><td>git push origin master + reiniciar Node.js no cPanel</td></tr>
   <tr><td>Print-agent local</td><td>node print-agent.js (na pasta acaineiro-print-service/)</td></tr>
 </table>
 

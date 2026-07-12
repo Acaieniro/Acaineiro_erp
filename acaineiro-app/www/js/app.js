@@ -831,7 +831,7 @@ function renderLoyalty() {
 
 // ─── COMPARTILHAR ───
 function shareApp() {
-  const text = '🥣 Venha conhecer o Açaineiro - O melhor açaí de Contagem! Peça já pelo app: https://sistemaacaineiro.netlify.app';
+  const text = '🥣 Venha conhecer o Açaineiro - O melhor açaí de Contagem! Peça já pelo app: https://sistemaacaineiro.sistemtech.com.br';
   if (navigator.share) {
     navigator.share({ title: 'Açaineiro', text, url: 'https://sistemaacaineiro.sistemtech.com.br' }).catch(() => {});
   } else if (navigator.clipboard) {

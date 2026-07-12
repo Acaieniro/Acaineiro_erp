@@ -1619,8 +1619,8 @@ app.post('/api/pagbank/criar-aplicacao', adminAuth, async (req, res) => {
     const body = {
       name: 'Açaineiro',
       description: 'Sistema de pedidos online',
-      site: 'https://sistemaacaineiro.netlify.app',
-      redirect_uri: 'https://sistemaacaineiro.netlify.app/admin/'
+      site: 'https://sistemaacaineiro.sistemtech.com.br',
+      redirect_uri: 'https://sistemaacaineiro.sistemtech.com.br/admin/'
     };
     console.log('[PagBank] Criando aplicacao...');
     const r = await fetch('https://api.pagseguro.com/oauth2/application', {

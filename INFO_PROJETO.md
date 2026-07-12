@@ -1,10 +1,9 @@
 # Açaineiro - Informações do Projeto
 
 ## URLs
-- **Sistema (Painel Admin):** https://sistemaacaineiro.netlify.app/admin/
-- **Site do Cliente (PWA):** https://sistemaacaineiro.netlify.app/
+- **Sistema (Painel Admin):** https://sistemaacaineiro.sistemtech.com.br/admin/
+- **Site do Cliente (PWA):** https://sistemaacaineiro.sistemtech.com.br/
 - **GitHub:** https://github.com/Acaieniro/Acaineiro_erp
-- **Netlify (deploys):** https://app.netlify.com/projects/sistemaacaineiro/overview
 - **Turso (banco):** https://app.turso.tech/acaieniro?group=default
 
 ## Acesso
@@ -30,5 +29,5 @@
 | Ação | Comando |
 |------|---------|
 | Rodar local | `npm start` (na pasta backend/) |
-| Deploy Netlify | `npm run netlify` (ou push no master) |
+| Deploy | `git push origin master` + reiniciar Node.js no cPanel |
 | Print-agent local | `node print-agent.js` (na pasta acaineiro-print-service/) |
