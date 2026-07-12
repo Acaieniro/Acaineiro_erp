@@ -822,7 +822,11 @@ function renderLoyalty() {
   const countEl = document.getElementById('loyalty-count');
   if (!stampsEl) return;
 
-  const phone = userData?.phone || '';
+  let phone = userData?.phone || '';
+  if (!phone) {
+    const savedOrders = JSON.parse(localStorage.getItem('acaineiro_orders') || '[]');
+    if (savedOrders.length) phone = savedOrders[0].customer?.phone || '';
+  }
   if (!phone) {
     stampsEl.innerHTML = '';
     if (countEl) countEl.textContent = 'Faça login para participar';
@@ -848,6 +852,25 @@ function renderLoyalty() {
         countEl.textContent = '🎉 Parabéns! Você ganhou um cupom! Confira em Cupons';
       } else {
         countEl.textContent = `${data.count} de ${goal} compras`;
+      }
+    }
+    // Show loyalty coupon card on home page
+    const loyaltyCard = document.getElementById('loyalty-coupon-card');
+    if (loyaltyCard) {
+      const cupomSalvo = JSON.parse(localStorage.getItem('cupomResgatadoInfo') || 'null');
+      const pendingRewards = (data.rewards || []).filter(r => !r.redeemed_at);
+      if (cupomSalvo) {
+        loyaltyCard.style.display = 'block';
+        document.getElementById('loyalty-coupon-sub').textContent = `Cupom ${cupomSalvo.code} resgatado — clique para usar`;
+        document.getElementById('loyalty-coupon-preview').innerHTML = `🏷️ ${parseFloat(cupomSalvo.discount_percent || 0) > 0 ? `${cupomSalvo.discount_percent}% de desconto` : `R$ ${parseFloat(cupomSalvo.discount_value || 0).toFixed(2).replace('.',',')} de desconto`}`;
+      } else if (pendingRewards.length) {
+        loyaltyCard.style.display = 'block';
+        document.getElementById('loyalty-coupon-sub').textContent = `Você tem ${pendingRewards.length} cupom(ns) disponível(eis)!`;
+        const r = pendingRewards[0];
+        const isPct = parseFloat(r.discount_percent || 0) > 0;
+        document.getElementById('loyalty-coupon-preview').innerHTML = `🎁 ${r.coupon_code} — ${isPct ? `${r.discount_percent}%` : `R$ ${parseFloat(r.discount_value || 0).toFixed(2).replace('.',',')}`}`;
+      } else {
+        loyaltyCard.style.display = 'none';
       }
     }
   }).catch(() => {
