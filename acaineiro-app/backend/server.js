@@ -24,6 +24,8 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET || ''
 });
 
+const useMySQL = !!(process.env.MYSQL_HOST);
+
 const app = express();
 
 let server, io;
@@ -35,10 +37,37 @@ if (!isNetlify) {
 const PORT = process.env.PORT || 3000;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'acaineiro@2026.';
 
-// ─── Database: Turso (Netlify) or SQLite (local) ───
+// ─── Database: MySQL, Turso (Netlify) or SQLite (local) ───
 const useTurso = !!(process.env.TURSO_DATABASE_URL && process.env.TURSO_AUTH_TOKEN);
 let db;
-if (useTurso) {
+if (useMySQL) {
+  const mysql = require('mysql2/promise');
+  const pool = mysql.createPool({
+    host: process.env.MYSQL_HOST,
+    user: process.env.MYSQL_USER,
+    password: process.env.MYSQL_PASSWORD,
+    database: process.env.MYSQL_DATABASE,
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0
+  });
+  db = {
+    run: async (sql, ...params) => {
+      sql = sql.replace(/INSERT OR REPLACE INTO/gi, 'REPLACE INTO')
+               .replace(/INSERT OR IGNORE INTO/gi, 'INSERT IGNORE INTO');
+      const [r] = await pool.execute(sql, params);
+      return { changes: r.affectedRows, lastInsertRowid: r.insertId };
+    },
+    get: async (sql, ...params) => {
+      const [rows] = await pool.execute(sql, params);
+      return rows[0] || null;
+    },
+    all: async (sql, ...params) => {
+      const [rows] = await pool.execute(sql, params);
+      return rows;
+    }
+  };
+} else if (useTurso) {
   const { createClient } = require('@libsql/client');
   db = createClient({
     url: process.env.TURSO_DATABASE_URL,
@@ -104,6 +133,7 @@ app.use(async (req, res, next) => {
 });
 
 async function initDB() {
+  if (useMySQL) return; // Tables already exist in imported MySQL database
   await db.run(`CREATE TABLE IF NOT EXISTS categories (
     id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, slug TEXT NOT NULL UNIQUE,
     icon TEXT DEFAULT '📋', sort_order INTEGER DEFAULT 0
@@ -643,20 +673,27 @@ app.delete('/api/combos/:id/items/:itemId', adminAuth, async (req, res) => {
 });
 
 app.get('/api/products/top', async (req, res) => {
-  const topProducts = await db.all(`
-    SELECT p.*, c.name as category_name, c.slug as category_slug,
-      COALESCE(t.cnt, 0) as total_sold
+  const products = await db.all(`
+    SELECT p.*, c.name as category_name, c.slug as category_slug
     FROM products p
     JOIN categories c ON p.category_id = c.id
-    LEFT JOIN (
-      SELECT json_extract(value, '$.id') as pid, COUNT(*) as cnt
-      FROM orders, json_each(orders.items_json)
-      WHERE orders.status NOT IN ('cancelado')
-      GROUP BY pid
-    ) t ON p.id = t.pid
     WHERE p.active = 1
-    ORDER BY total_sold DESC, p.id LIMIT 8`);
-  res.json(topProducts);
+    ORDER BY p.sort_order, p.id`);
+  const orders = await db.all("SELECT items_json FROM orders WHERE status NOT IN ('cancelado')");
+  const salesCount = {};
+  for (const order of orders) {
+    try {
+      const items = JSON.parse(order.items_json);
+      for (const item of items) {
+        salesCount[item.id] = (salesCount[item.id] || 0) + 1;
+      }
+    } catch (e) {}
+  }
+  for (const p of products) {
+    p.total_sold = salesCount[p.id] || 0;
+  }
+  products.sort((a, b) => b.total_sold - a.total_sold);
+  res.json(products.slice(0, 8));
 });
 
 // ─── SYNC ───
@@ -1358,9 +1395,15 @@ app.get('/orders-count', adminAuth, async (req, res) => {
 app.get('/api/sales-report', adminAuth, async (req, res) => {
   const period = req.query.period || 'total';
   let dateFilter = '';
-  if (period === 'hoje') dateFilter = "AND date(created_at, 'localtime') = date('now','localtime')";
-  else if (period === 'semana') dateFilter = "AND datetime(created_at, 'localtime') >= datetime('now','-7 days','localtime')";
-  else if (period === 'mes') dateFilter = "AND datetime(created_at, 'localtime') >= datetime('now','-30 days','localtime')";
+  if (useMySQL) {
+    if (period === 'hoje') dateFilter = 'AND DATE(created_at) = CURDATE()';
+    else if (period === 'semana') dateFilter = 'AND created_at >= NOW() - INTERVAL 7 DAY';
+    else if (period === 'mes') dateFilter = 'AND created_at >= NOW() - INTERVAL 30 DAY';
+  } else {
+    if (period === 'hoje') dateFilter = "AND date(created_at, 'localtime') = date('now','localtime')";
+    else if (period === 'semana') dateFilter = "AND datetime(created_at, 'localtime') >= datetime('now','-7 days','localtime')";
+    else if (period === 'mes') dateFilter = "AND datetime(created_at, 'localtime') >= datetime('now','-30 days','localtime')";
+  }
   const rows = await db.all(`SELECT payment_method, payment_method_detail, COUNT(*) as count, SUM(total) as total
     FROM orders WHERE status NOT IN ('novo','cancelado') ${dateFilter}
     GROUP BY payment_method, payment_method_detail ORDER BY payment_method, payment_method_detail`);
