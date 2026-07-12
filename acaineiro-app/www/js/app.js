@@ -567,7 +567,7 @@ async function resgatarCupom(code, discountPercent, discountValue) {
   const label = pct > 0 ? `-${pct}%` : `-R$ ${val.toFixed(2).replace('.',',')}`;
   const toast = document.getElementById('toast');
   if (toast) {
-    toast.textContent = `🎉 Cupom ${code} resgatado! (${label}) Use no checkout`;
+    toast.textContent = `🎉 Cupom ${code} resgatado! (${label})`;
     toast.style.display = 'block';
     toast.style.opacity = '1';
     setTimeout(() => {
@@ -587,9 +587,24 @@ async function resgatarCupom(code, discountPercent, discountValue) {
       btn.disabled = true;
     }
   });
-  // If came from checkout, go back with coupon applied
+  // Validar e aplicar o cupom imediatamente antes de voltar ao checkout
   if (redirectToCheckout) {
     redirectToCheckout = false;
+    try {
+      const subtotal = cart.reduce((s, i) => s + (i.price * i.qty), 0);
+      const phone = userData?.phone || document.getElementById('ord-phone')?.value.trim() || '';
+      const cpf = userData?.cpf || '';
+      const r = await fetch(`${API_URL}/api/coupons/validate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code, subtotal, phone, cpf })
+      }).then(r => r.json());
+      if (!r.error) {
+        window.activeCoupon = r;
+      }
+    } catch (e) {
+      console.error('Erro ao aplicar cupom:', e);
+    }
     setTimeout(() => {
       navigateTo('checkout');
       showCheckout();
