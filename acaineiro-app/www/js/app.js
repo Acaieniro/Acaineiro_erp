@@ -841,7 +841,10 @@ function renderLoyalty() {
     }
     if (fillEl) fillEl.style.width = `${(total / goal) * 100}%`;
     if (countEl) {
-      if (data.count >= goal) {
+      const pendingRewards = (data.rewards || []).filter(r => !r.redeemed_at);
+      if (pendingRewards.length) {
+        countEl.textContent = `🎉 Você tem ${pendingRewards.length} cupom(ns) de fidelidade! Clique para usar`;
+      } else if (data.count >= goal) {
         countEl.textContent = '🎉 Parabéns! Você ganhou um cupom! Confira em Cupons';
       } else {
         countEl.textContent = `${data.count} de ${goal} compras`;
