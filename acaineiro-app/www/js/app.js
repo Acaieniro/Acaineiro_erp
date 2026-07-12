@@ -587,7 +587,7 @@ async function resgatarCupom(code, discountPercent, discountValue) {
       btn.disabled = true;
     }
   });
-  // Validar e aplicar o cupom imediatamente e ir ao checkout
+  // Validar e aplicar o cupom
   redirectToCheckout = false;
   try {
     const subtotal = cart.reduce((s, i) => s + (i.price * i.qty), 0);
@@ -604,10 +604,24 @@ async function resgatarCupom(code, discountPercent, discountValue) {
   } catch (e) {
     console.error('Erro ao aplicar cupom:', e);
   }
-  setTimeout(() => {
-    navigateTo('checkout');
-    showCheckout();
-  }, 400);
+  // Ir ao checkout se tiver itens no carrinho, senão avisa que ta pronto
+  if (cart.length) {
+    setTimeout(() => {
+      navigateTo('checkout');
+      showCheckout();
+    }, 400);
+  } else {
+    const toast = document.getElementById('toast');
+    if (toast) {
+      toast.textContent = '🎉 Cupom ativado! Adicione produtos e vá ao checkout.';
+      toast.style.display = 'block';
+      toast.style.opacity = '1';
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        setTimeout(() => toast.style.display = 'none', 300);
+      }, 3000);
+    }
+  }
 }
 async function renderCupomDoDia() {
   const el = document.getElementById('cupom-do-dia');
@@ -1183,9 +1197,10 @@ function showCouponApplied(code, percent, discount, freeShipping) {
   const row = document.getElementById('coupon-applied-row');
   row.style.display = 'flex';
   document.getElementById('coupon-applied-code').textContent = code;
-  document.getElementById('coupon-applied-discount').textContent = freeShipping
-    ? '🚚 Frete Grátis'
-    : `-${percent}% (R$ ${discount.toFixed(2).replace('.',',')})`;
+  const label = freeShipping ? '🚚 Frete Grátis'
+    : parseFloat(percent) > 0 ? `-${percent}% (R$ ${discount.toFixed(2).replace('.',',')})`
+    : `-R$ ${discount.toFixed(2).replace('.',',')}`;
+  document.getElementById('coupon-applied-discount').textContent = label;
 }
 
 function hideCouponApplied() {
@@ -1214,7 +1229,8 @@ function updateCheckoutWithCoupon() {
   const discEl = document.getElementById('checkout-discount');
   if (window.activeCoupon && !window.activeCoupon.free_shipping && discount > 0) {
     couponRow.style.display = 'flex';
-    discEl.textContent = `-R$ ${discount.toFixed(2).replace('.',',')} (${window.activeCoupon.discount_percent}%)`;
+    const pct2 = parseFloat(window.activeCoupon.discount_percent || 0);
+    discEl.textContent = pct2 > 0 ? `-R$ ${discount.toFixed(2).replace('.',',')} (${pct2}%)` : `-R$ ${discount.toFixed(2).replace('.',',')}`;
   } else if (window.activeCoupon && window.activeCoupon.free_shipping) {
     couponRow.style.display = 'flex';
     discEl.textContent = '🚚 Frete Grátis';
@@ -1298,7 +1314,13 @@ async function showCheckout() {
 
   const fee = deliveryFeeFor(neighborhood, isPickup);
   const subtotal = cart.reduce((s, i) => s + (i.price * i.qty), 0);
-  const discount = window.activeCoupon ? window.activeCoupon.discount : 0;
+  let discount = 0;
+  if (window.activeCoupon) {
+    const rawValue = parseFloat(window.activeCoupon.discount_value || 0);
+    const rawPct = parseFloat(window.activeCoupon.discount_percent_raw || window.activeCoupon.discount_percent || 0);
+    discount = rawValue > 0 ? Math.min(rawValue, subtotal) : subtotal * (rawPct / 100);
+    window.activeCoupon.discount = discount;
+  }
   const total = subtotal + fee - discount;
 
   document.getElementById('checkout-items').innerHTML = cart.map(i =>
@@ -1315,7 +1337,8 @@ async function showCheckout() {
   const discEl = document.getElementById('checkout-discount');
   if (window.activeCoupon && !window.activeCoupon.free_shipping && discount > 0) {
     couponRow.style.display = 'flex';
-    discEl.textContent = `-R$ ${discount.toFixed(2).replace('.',',')} (${window.activeCoupon.discount_percent}%)`;
+    const pct2 = parseFloat(window.activeCoupon.discount_percent || 0);
+    discEl.textContent = pct2 > 0 ? `-R$ ${discount.toFixed(2).replace('.',',')} (${pct2}%)` : `-R$ ${discount.toFixed(2).replace('.',',')}`;
   } else if (window.activeCoupon && window.activeCoupon.free_shipping) {
     couponRow.style.display = 'flex';
     discEl.textContent = '🚚 Frete Grátis';
