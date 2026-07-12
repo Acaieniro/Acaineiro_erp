@@ -1201,7 +1201,13 @@ function updateCheckoutWithCoupon() {
   const neighborhood = document.getElementById('ord-neighborhood')?.value || '';
   const fee = deliveryFeeFor(neighborhood, isPickup);
   const subtotal = cart.reduce((s, i) => s + (i.price * i.qty), 0);
-  const discount = window.activeCoupon ? window.activeCoupon.discount : 0;
+  let discount = 0;
+  if (window.activeCoupon) {
+    const rawValue = parseFloat(window.activeCoupon.discount_value || 0);
+    const rawPct = parseFloat(window.activeCoupon.discount_percent_raw || window.activeCoupon.discount_percent || 0);
+    discount = rawValue > 0 ? Math.min(rawValue, subtotal) : subtotal * (rawPct / 100);
+    window.activeCoupon.discount = discount;
+  }
   const total = subtotal + fee - discount;
   document.getElementById('checkout-total').textContent = `R$ ${total.toFixed(2).replace('.',',')}`;
   const couponRow = document.getElementById('checkout-coupon-row');
@@ -1232,10 +1238,17 @@ function removeCoupon() {
 function calcTroco() {
     const isPickup = document.querySelector('input[name="order_type"]:checked')?.value === 'pickup';
     const neighborhood = document.getElementById('ord-neighborhood')?.value || '';
-    const fee = deliveryFeeFor(neighborhood, isPickup);
-    const subtotal = cart.reduce((s, i) => s + (i.price * i.qty), 0);
-    const discount = window.activeCoupon ? window.activeCoupon.discount : 0;
-    const total = subtotal + fee - discount;
+  const fee = deliveryFeeFor(neighborhood, isPickup);
+  const subtotal = cart.reduce((s, i) => s + (i.price * i.qty), 0);
+  // Recalcula desconto com base no subtotal atual (evita valor pre-calculado obsoleto)
+  let discount = 0;
+  if (window.activeCoupon) {
+    const rawValue = parseFloat(window.activeCoupon.discount_value || 0);
+    const rawPct = parseFloat(window.activeCoupon.discount_percent_raw || window.activeCoupon.discount_percent || 0);
+    discount = rawValue > 0 ? Math.min(rawValue, subtotal) : subtotal * (rawPct / 100);
+    window.activeCoupon.discount = discount;
+  }
+  const total = subtotal + fee - discount;
   const pago = parseFloat(document.getElementById('ord-troco').value) || 0;
   const result = document.getElementById('troco-result');
   if (pago > total) {
@@ -1330,11 +1343,12 @@ async function showCheckout() {
 
   // Restore coupon if active
   if (window.activeCoupon) {
-    showCouponApplied(window.activeCoupon.code, window.activeCoupon.discount_percent, window.activeCoupon.discount, window.activeCoupon.free_shipping);
+    showCouponApplied(window.activeCoupon.code, window.activeCoupon.discount_percent, discount, window.activeCoupon.free_shipping);
     const pct2 = window.activeCoupon.discount_percent || 0;
+    const discLabel = pct2 > 0 ? `-${pct2}%` : `-R$ ${discount.toFixed(2).replace('.',',')}`;
     document.getElementById('coupon-feedback').innerHTML = window.activeCoupon.free_shipping
       ? `✅ Cupom ${window.activeCoupon.code} — Frete Grátis!`
-      : pct2 > 0 ? `✅ Cupom ${window.activeCoupon.code} aplicado! -${pct2}%` : `✅ Cupom ${window.activeCoupon.code} aplicado!`;
+      : `✅ Cupom ${window.activeCoupon.code} aplicado! ${discLabel}`;
     document.getElementById('coupon-feedback').className = 'coupon-feedback success';
   } else if (cupomResgatado && !window.activeCoupon) {
     document.getElementById('coupon-input').value = cupomResgatado;

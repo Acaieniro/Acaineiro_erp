@@ -539,7 +539,7 @@ app.post('/api/coupons/validate', async (req, res) => {
   const discount = coupon.discount_value > 0
     ? Math.min(coupon.discount_value, subtotal)
     : subtotal * (coupon.discount_percent / 100);
-  res.json({ valid: true, code: coupon.code, discount_percent: coupon.discount_value > 0 ? 0 : coupon.discount_percent, discount, min_value: coupon.min_value, id: coupon.id, free_shipping: !!coupon.free_shipping });
+  res.json({ valid: true, code: coupon.code, discount_percent: coupon.discount_value > 0 ? 0 : coupon.discount_percent, discount, min_value: coupon.min_value, id: coupon.id, free_shipping: !!coupon.free_shipping, discount_value: coupon.discount_value, discount_percent_raw: coupon.discount_percent });
 });
 
 app.post('/api/coupons/:id/use', async (req, res) => {
