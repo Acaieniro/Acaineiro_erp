@@ -532,8 +532,12 @@ function comboModalAddToCart() {
 
 // ─── COUPOM DO DIA (HOME) ───
 function irResgatarCupom() {
-  redirectToCheckout = true;
-  navigateTo('cupons');
+  if (cupomResgatado) {
+    document.getElementById('coupon-input').value = cupomResgatado;
+    applyCoupon();
+  } else {
+    navigateTo('cupons');
+  }
 }
 async function resgatarProdutoFidelidade(dataset) {
   const { code, productId, productName, productPrice } = dataset;
@@ -1139,6 +1143,8 @@ async function applyCoupon() {
     }
 
     window.activeCoupon = r;
+    cupomResgatado = null;
+    localStorage.removeItem('cupomResgatado');
     if (r.free_shipping) {
       feedback.innerHTML = `✅ Cupom ${r.code} — 🚚 Frete Grátis!`;
     } else {
@@ -1337,9 +1343,6 @@ async function showCheckout() {
       ? `✅ Cupom ${window.activeCoupon.code} — Frete Grátis!`
       : `✅ Cupom ${window.activeCoupon.code} aplicado! ${discLabel}`;
     document.getElementById('coupon-feedback').className = 'coupon-feedback success';
-  } else if (cupomResgatado && !window.activeCoupon) {
-    document.getElementById('coupon-input').value = cupomResgatado;
-    await applyCoupon();
   } else {
     hideCouponApplied();
   }
