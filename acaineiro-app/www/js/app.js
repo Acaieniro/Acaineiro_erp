@@ -602,12 +602,43 @@ async function renderCupomDoDia() {
   try {
     const coupons = await API.get('/api/coupons');
     const withImage = coupons.filter(c => c.image_url);
-    if (!withImage.length) { el.style.display = 'none'; return; }
-    el.style.display = 'block';
-    const c = withImage[0];
-    preview.style.backgroundImage = `url('${c.image_url}')`;
-    preview.innerHTML = `<div class="cupom-dia-overlay">${c.code} • -${c.discount_percent}%</div>`;
+    if (!withImage.length) { el.style.display = 'none'; }
+    else {
+      el.style.display = 'block';
+      const c = withImage[0];
+      preview.style.backgroundImage = `url('${c.image_url}')`;
+      preview.innerHTML = `<div class="cupom-dia-overlay">${c.code} • -${c.discount_percent}%</div>`;
+    }
   } catch (e) { el.style.display = 'none'; }
+
+  // Show loyalty coupon card if customer has a saved/resgatado coupon or pending reward
+  const loyaltyCard = document.getElementById('loyalty-coupon-card');
+  if (!loyaltyCard) return;
+  const cupomSalvo = JSON.parse(localStorage.getItem('cupomResgatadoInfo') || 'null');
+  if (cupomSalvo) {
+    loyaltyCard.style.display = 'block';
+    document.getElementById('loyalty-coupon-sub').textContent = `Cupom ${cupomSalvo.code} resgatado — clique para usar`;
+    document.getElementById('loyalty-coupon-preview').innerHTML = `🏷️ ${parseFloat(cupomSalvo.discount_percent || 0) > 0 ? `${cupomSalvo.discount_percent}% de desconto` : `R$ ${parseFloat(cupomSalvo.discount_value || 0).toFixed(2).replace('.',',')} de desconto`}`;
+    return;
+  }
+  let phone = userData?.phone || '';
+  if (!phone) {
+    const savedOrders = JSON.parse(localStorage.getItem('acaineiro_orders') || '[]');
+    if (savedOrders.length) phone = savedOrders[0].customer?.phone || '';
+  }
+  if (!phone) { loyaltyCard.style.display = 'none'; return; }
+  try {
+    const data = await API.get(`/api/loyalty/${encodeURIComponent(phone)}`);
+    const pending = (data.rewards || []).filter(r => !r.redeemed_at);
+    if (pending.length) {
+      loyaltyCard.style.display = 'block';
+      document.getElementById('loyalty-coupon-sub').textContent = `Você tem ${pending.length} cupom(ns) disponível(eis)!`;
+      const r = pending[0];
+      document.getElementById('loyalty-coupon-preview').innerHTML = `🎁 ${r.coupon_code} — ${parseFloat(r.discount_percent || 0) > 0 ? `${r.discount_percent}%` : `R$ ${parseFloat(r.discount_value || 0).toFixed(2).replace('.',',')}`}`;
+    } else {
+      loyaltyCard.style.display = 'none';
+    }
+  } catch (e) { loyaltyCard.style.display = 'none'; }
 }
 
 // ─── COUPONS PAGE ───
@@ -847,30 +878,11 @@ function renderLoyalty() {
     if (countEl) {
       const pendingRewards = (data.rewards || []).filter(r => !r.redeemed_at);
       if (pendingRewards.length) {
-        countEl.textContent = `🎉 Você tem ${pendingRewards.length} cupom(ns) de fidelidade! Clique para usar`;
+        countEl.textContent = `🎉 Você tem ${pendingRewards.length} cupom(ns) de fidelidade!`;
       } else if (data.count >= goal) {
         countEl.textContent = '🎉 Parabéns! Você ganhou um cupom! Confira em Cupons';
       } else {
         countEl.textContent = `${data.count} de ${goal} compras`;
-      }
-    }
-    // Show loyalty coupon card on home page
-    const loyaltyCard = document.getElementById('loyalty-coupon-card');
-    if (loyaltyCard) {
-      const cupomSalvo = JSON.parse(localStorage.getItem('cupomResgatadoInfo') || 'null');
-      const pendingRewards = (data.rewards || []).filter(r => !r.redeemed_at);
-      if (cupomSalvo) {
-        loyaltyCard.style.display = 'block';
-        document.getElementById('loyalty-coupon-sub').textContent = `Cupom ${cupomSalvo.code} resgatado — clique para usar`;
-        document.getElementById('loyalty-coupon-preview').innerHTML = `🏷️ ${parseFloat(cupomSalvo.discount_percent || 0) > 0 ? `${cupomSalvo.discount_percent}% de desconto` : `R$ ${parseFloat(cupomSalvo.discount_value || 0).toFixed(2).replace('.',',')} de desconto`}`;
-      } else if (pendingRewards.length) {
-        loyaltyCard.style.display = 'block';
-        document.getElementById('loyalty-coupon-sub').textContent = `Você tem ${pendingRewards.length} cupom(ns) disponível(eis)!`;
-        const r = pendingRewards[0];
-        const isPct = parseFloat(r.discount_percent || 0) > 0;
-        document.getElementById('loyalty-coupon-preview').innerHTML = `🎁 ${r.coupon_code} — ${isPct ? `${r.discount_percent}%` : `R$ ${parseFloat(r.discount_value || 0).toFixed(2).replace('.',',')}`}`;
-      } else {
-        loyaltyCard.style.display = 'none';
       }
     }
   }).catch(() => {

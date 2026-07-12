@@ -577,10 +577,12 @@ app.get('/api/loyalty/:phone', async (req, res) => {
       c.times_used, c.usage_limit
       FROM loyalty_rewards lr LEFT JOIN coupons c ON lr.coupon_code = c.code
       WHERE lr.phone=? ORDER BY lr.created_at DESC`, phone);
+    console.log('[GET loyalty] phone:', JSON.stringify(phone), 'rows encontradas:', rows.length, 'count:', count);
     // Filtrar em JS (seguro: se coluna redeemed_at nao existe, retorna undefined => nao filtra)
     const rewards = [];
     const productIds = [];
     for (const r of rows) {
+      console.log('[GET loyalty] row:', r.coupon_code, 'redeemed_at:', r.redeemed_at, 'usage_limit:', r.usage_limit, 'times_used:', r.times_used);
       if (r.redeemed_at) continue;
       const used = parseInt(r.usage_limit || 0) > 0 && parseInt(r.times_used || 0) >= parseInt(r.usage_limit);
       if (used) continue;
@@ -1063,6 +1065,7 @@ app.put('/api/orders/:id/confirm', async (req, res) => {
 app.post('/api/loyalty/force-reward', adminAuth, async (req, res) => {
   const { phone } = req.body;
   if (!phone) return res.status(400).json({ error: 'Telefone obrigatório' });
+  console.log('[force-reward] phone:', JSON.stringify(phone));
   const settings = await getSettings();
   const rewardProductId = parseInt(settings.loyalty_reward_product_id) || 0;
   const couponCode = `FIDEL-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
@@ -1075,6 +1078,7 @@ app.post('/api/loyalty/force-reward', adminAuth, async (req, res) => {
       await db.run('INSERT INTO loyalty_rewards (phone, coupon_code, reward_product_id) VALUES (?,?,?)', phone, couponCode, rewardProductId);
       rewardCreated = true;
       await db.run('UPDATE loyalty SET count = 0 WHERE phone=?', phone);
+      console.log('[force-reward] criado cupom produto:', couponCode, 'para phone:', phone);
       return res.json({ code: couponCode, value: product.price, type: 'product', desc: `Grátis: ${product.name}`, product_id: rewardProductId, product_name: product.name, image_url: product.image_url || '' });
     }
   }
@@ -1092,6 +1096,7 @@ app.post('/api/loyalty/force-reward', adminAuth, async (req, res) => {
     }
     await db.run('INSERT INTO loyalty_rewards (phone, coupon_code) VALUES (?,?)', phone, couponCode);
     await db.run('UPDATE loyalty SET count = 0 WHERE phone=?', phone);
+    console.log('[force-reward] criado cupom desconto:', couponCode, 'tipo:', rewardType, 'valor:', rewardValue, 'para phone:', phone);
     res.json({ code: couponCode, value: rewardValue, type: rewardType, desc: rewardDesc, image_url: rewardImage });
   }
 });
