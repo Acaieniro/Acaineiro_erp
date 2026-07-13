@@ -613,9 +613,10 @@ async function renderCupomDoDia() {
 
   // Show loyalty coupon card if customer has a saved/resgatado coupon or pending reward
   const loyaltyCard = document.getElementById('loyalty-coupon-card');
-  if (!loyaltyCard) return;
+  if (!loyaltyCard) { console.log('[loyalty-card] elemento nao encontrado'); return; }
   const cupomSalvo = JSON.parse(localStorage.getItem('cupomResgatadoInfo') || 'null');
   if (cupomSalvo) {
+    console.log('[loyalty-card] cupomSalvo encontrado:', cupomSalvo.code);
     loyaltyCard.style.display = 'block';
     document.getElementById('loyalty-coupon-sub').textContent = `Cupom ${cupomSalvo.code} resgatado — clique para usar`;
     document.getElementById('loyalty-coupon-preview').innerHTML = `🏷️ ${parseFloat(cupomSalvo.discount_percent || 0) > 0 ? `${cupomSalvo.discount_percent}% de desconto` : `R$ ${parseFloat(cupomSalvo.discount_value || 0).toFixed(2).replace('.',',')} de desconto`}`;
@@ -626,19 +627,23 @@ async function renderCupomDoDia() {
     const savedOrders = JSON.parse(localStorage.getItem('acaineiro_orders') || '[]');
     if (savedOrders.length) phone = savedOrders[0].customer?.phone || '';
   }
-  if (!phone) { loyaltyCard.style.display = 'none'; return; }
+  if (!phone) { console.log('[loyalty-card] sem telefone'); loyaltyCard.style.display = 'none'; return; }
   try {
+    console.log('[loyalty-card] buscando rewards para phone:', phone);
     const data = await API.get(`/api/loyalty/${encodeURIComponent(phone)}`);
+    console.log('[loyalty-card] dados recebidos:', JSON.stringify(data));
     const pending = (data.rewards || []).filter(r => !r.redeemed_at);
     if (pending.length) {
+      console.log('[loyalty-card] rewards pendentes:', pending.length);
       loyaltyCard.style.display = 'block';
       document.getElementById('loyalty-coupon-sub').textContent = `Você tem ${pending.length} cupom(ns) disponível(eis)!`;
       const r = pending[0];
       document.getElementById('loyalty-coupon-preview').innerHTML = `🎁 ${r.coupon_code} — ${parseFloat(r.discount_percent || 0) > 0 ? `${r.discount_percent}%` : `R$ ${parseFloat(r.discount_value || 0).toFixed(2).replace('.',',')}`}`;
     } else {
+      console.log('[loyalty-card] nenhum reward pendente');
       loyaltyCard.style.display = 'none';
     }
-  } catch (e) { loyaltyCard.style.display = 'none'; }
+  } catch (e) { console.log('[loyalty-card] erro:', e.message); loyaltyCard.style.display = 'none'; }
 }
 
 // ─── COUPONS PAGE ───
