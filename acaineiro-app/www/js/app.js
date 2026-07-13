@@ -585,6 +585,32 @@ async function resgatarCupom(code, discountPercent, discountValue) {
     }, 3000);
   }
 }
+async function buscarCuponsPorTelefone() {
+  const input = document.getElementById('loyalty-phone-input');
+  const errEl = document.getElementById('loyalty-phone-error');
+  if (!input) return;
+  const phone = input.value.trim().replace(/[^\d]/g, '');
+  if (!phone || phone.length < 10) {
+    if (errEl) { errEl.textContent = 'Telefone inválido'; errEl.style.display = 'block'; }
+    return;
+  }
+  if (errEl) errEl.style.display = 'none';
+  try {
+    const data = await API.get(`/api/loyalty/${encodeURIComponent(phone)}`);
+    const pending = (data.rewards || []).filter(r => !r.redeemed_at);
+    if (pending.length) {
+      // Save phone so home card will show it
+      let savedOrders = JSON.parse(localStorage.getItem('acaineiro_orders') || '[]');
+      if (!savedOrders.length || !savedOrders[0].customer?.phone) {
+        savedOrders.unshift({ id: 0, customer: { phone } });
+        localStorage.setItem('acaineiro_orders', JSON.stringify(savedOrders));
+      }
+    }
+    renderCouponsPage();
+  } catch (e) {
+    if (errEl) { errEl.textContent = 'Erro ao buscar cupons'; errEl.style.display = 'block'; }
+  }
+}
 async function aplicarCupomSalvo() {
   const saved = JSON.parse(localStorage.getItem('cupomResgatadoInfo'));
   if (!saved) return;
@@ -616,10 +642,20 @@ async function renderCupomDoDia() {
   if (!loyaltyCard) { console.log('[loyalty-card] elemento nao encontrado'); return; }
   const cupomSalvo = JSON.parse(localStorage.getItem('cupomResgatadoInfo') || 'null');
   if (cupomSalvo) {
-    console.log('[loyalty-card] cupomSalvo encontrado:', cupomSalvo.code);
     loyaltyCard.style.display = 'block';
+    loyaltyCard.onclick = function() { navigateTo('cupons'); };
     document.getElementById('loyalty-coupon-sub').textContent = `Cupom ${cupomSalvo.code} resgatado — clique para usar`;
     document.getElementById('loyalty-coupon-preview').innerHTML = `🏷️ ${parseFloat(cupomSalvo.discount_percent || 0) > 0 ? `${cupomSalvo.discount_percent}% de desconto` : `R$ ${parseFloat(cupomSalvo.discount_value || 0).toFixed(2).replace('.',',')} de desconto`}`;
+    return;
+  }
+  // Mostrar card mesmo sem telefone se tiver reward local
+  const localReward = JSON.parse(localStorage.getItem('acaineiro_last_reward') || 'null');
+  if (localReward) {
+    loyaltyCard.style.display = 'block';
+    loyaltyCard.onclick = function() { navigateTo('cupons'); };
+    document.getElementById('loyalty-coupon-sub').textContent = `Você tem um cupom disponível!`;
+    const dLabel = localReward.type === 'percent' ? `${localReward.value}%` : `R$ ${parseFloat(localReward.value || 0).toFixed(2).replace('.',',')}`;
+    document.getElementById('loyalty-coupon-preview').innerHTML = `🎁 ${localReward.code} — ${dLabel}`;
     return;
   }
   let phone = userData?.phone || '';
@@ -627,23 +663,28 @@ async function renderCupomDoDia() {
     const savedOrders = JSON.parse(localStorage.getItem('acaineiro_orders') || '[]');
     if (savedOrders.length) phone = savedOrders[0].customer?.phone || '';
   }
-  if (!phone) { console.log('[loyalty-card] sem telefone'); loyaltyCard.style.display = 'none'; return; }
+  if (!phone) {
+    // Sem telefone: mostra card com mensagem p/ fazer login
+    loyaltyCard.style.display = 'block';
+    document.getElementById('loyalty-coupon-sub').textContent = `Faça login para ver seus cupons`;
+    document.getElementById('loyalty-coupon-preview').innerHTML = `👉 Clique e acesse sua conta`;
+    loyaltyCard.onclick = function() { navigateTo('account'); };
+    return;
+  } else {
+    loyaltyCard.onclick = function() { navigateTo('cupons'); };
+  }
   try {
-    console.log('[loyalty-card] buscando rewards para phone:', phone);
     const data = await API.get(`/api/loyalty/${encodeURIComponent(phone)}`);
-    console.log('[loyalty-card] dados recebidos:', JSON.stringify(data));
     const pending = (data.rewards || []).filter(r => !r.redeemed_at);
     if (pending.length) {
-      console.log('[loyalty-card] rewards pendentes:', pending.length);
       loyaltyCard.style.display = 'block';
       document.getElementById('loyalty-coupon-sub').textContent = `Você tem ${pending.length} cupom(ns) disponível(eis)!`;
       const r = pending[0];
       document.getElementById('loyalty-coupon-preview').innerHTML = `🎁 ${r.coupon_code} — ${parseFloat(r.discount_percent || 0) > 0 ? `${r.discount_percent}%` : `R$ ${parseFloat(r.discount_value || 0).toFixed(2).replace('.',',')}`}`;
     } else {
-      console.log('[loyalty-card] nenhum reward pendente');
       loyaltyCard.style.display = 'none';
     }
-  } catch (e) { console.log('[loyalty-card] erro:', e.message); loyaltyCard.style.display = 'none'; }
+  } catch (e) { loyaltyCard.style.display = 'none'; }
 }
 
 // ─── COUPONS PAGE ───
@@ -752,7 +793,16 @@ async function renderCouponsPage() {
       } catch (e) {}
     }
 
-    if (!coupons.length && !html) {
+    if (!coupons.length && !html && !phone) {
+      html = `<div style="text-align:center;padding:30px 20px;color:var(--text-tertiary);font-size:14px;">
+        <p style="margin-bottom:12px;">📱 <strong>Informe seu telefone</strong><br>para ver seus cupons de fidelidade</p>
+        <div style="display:flex;gap:8px;max-width:320px;margin:0 auto;">
+          <input type="tel" id="loyalty-phone-input" placeholder="(31) 99999-8888" style="flex:1;padding:10px;border:1px solid var(--border-light);border-radius:8px;font-size:14px;">
+          <button onclick="buscarCuponsPorTelefone()" style="padding:10px 16px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:14px;cursor:pointer;">🔍</button>
+        </div>
+        <div id="loyalty-phone-error" style="color:var(--red);font-size:12px;margin-top:6px;display:none;"></div>
+      </div>`;
+    } else if (!coupons.length && !html) {
       list.innerHTML = `<div style="text-align:center;padding:40px 0;color:var(--text-tertiary);font-size:14px;">Nenhum cupom disponível no momento</div>`;
       return;
     }
