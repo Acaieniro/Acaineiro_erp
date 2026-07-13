@@ -563,33 +563,41 @@ app.get('/api/loyalty/rewards/all', adminAuth, async (req, res) => {
 });
 
 app.get('/api/loyalty/:phone', async (req, res) => {
-  const phone = req.params.phone;
+  const raw = (req.params.phone || '').trim();
+  const phone = raw.replace(/[^\d]/g, '');
   if (!phone) return res.json({ count: 0, rewards: [] });
+  // Tenta lookup com telefone normalizado; se nao achar, tenta raw (dados antigos)
+  let lookupPhone = phone;
   try {
-    const loyalty = await db.get('SELECT * FROM loyalty WHERE phone=?', phone);
-    const count = loyalty ? loyalty.count : 0;
+    // Tenta com normalized phone; se zero rows, tenta raw (dados antigos)
+    let lookupPhones = [lookupPhone];
+    if (raw && raw !== lookupPhone) lookupPhones.push(raw);
+    let rewards = [];
+    let productIds = [];
+    let count = 0;
+    for (const lp of lookupPhones) {
+      const loyalty = await db.get('SELECT * FROM loyalty WHERE phone=?', lp);
+      if (loyalty) { count = loyalty.count; }
+      const rows = await db.all(`SELECT lr.coupon_code, lr.created_at, lr.reward_product_id, lr.redeemed_at,
+        c.name as coupon_name, c.discount_percent, c.discount_value, c.description, c.image_url,
+        c.times_used, c.usage_limit
+        FROM loyalty_rewards lr LEFT JOIN coupons c ON lr.coupon_code = c.code
+        WHERE lr.phone=? ORDER BY lr.created_at DESC`, lp);
+      console.log('[GET loyalty] lookupPhone:', JSON.stringify(lp), 'rows:', rows.length, 'count:', count);
+      for (const r of rows) {
+        if (r.redeemed_at) continue;
+        const used = parseInt(r.usage_limit || 0) > 0 && parseInt(r.times_used || 0) >= parseInt(r.usage_limit);
+        if (used) continue;
+        const pid = parseInt(r.reward_product_id || 0);
+        if (pid > 0) productIds.push(pid);
+        if (!rewards.find(x => x.coupon_code === r.coupon_code)) rewards.push(r);
+      }
+      // Se achou rewards em um formato, nao precisa tentar o outro
+      if (rewards.length) break;
+    }
     // Garantir colunas (seguro: ja existe, ignora)
     try { await db.run("ALTER TABLE loyalty_rewards ADD COLUMN reward_product_id INTEGER DEFAULT 0"); } catch (e) {}
     try { await db.run("ALTER TABLE loyalty_rewards ADD COLUMN redeemed_at TEXT"); } catch (e) {}
-    // Buscar rewards sem depender das colunas de migracao no WHERE
-    const rows = await db.all(`SELECT lr.coupon_code, lr.created_at, lr.reward_product_id, lr.redeemed_at,
-      c.name as coupon_name, c.discount_percent, c.discount_value, c.description, c.image_url,
-      c.times_used, c.usage_limit
-      FROM loyalty_rewards lr LEFT JOIN coupons c ON lr.coupon_code = c.code
-      WHERE lr.phone=? ORDER BY lr.created_at DESC`, phone);
-    console.log('[GET loyalty] phone:', JSON.stringify(phone), 'rows encontradas:', rows.length, 'count:', count);
-    // Filtrar em JS (seguro: se coluna redeemed_at nao existe, retorna undefined => nao filtra)
-    const rewards = [];
-    const productIds = [];
-    for (const r of rows) {
-      console.log('[GET loyalty] row:', r.coupon_code, 'redeemed_at:', r.redeemed_at, 'usage_limit:', r.usage_limit, 'times_used:', r.times_used);
-      if (r.redeemed_at) continue;
-      const used = parseInt(r.usage_limit || 0) > 0 && parseInt(r.times_used || 0) >= parseInt(r.usage_limit);
-      if (used) continue;
-      const pid = parseInt(r.reward_product_id || 0);
-      if (pid > 0) productIds.push(pid);
-      rewards.push(r);
-    }
     // Buscar dados dos produtos em lote
     if (productIds.length) {
       const ids = [...new Set(productIds)];
@@ -1008,7 +1016,7 @@ app.put('/api/orders/:id/confirm', async (req, res) => {
 
   // Loyalty: increment count for this customer (try/catch p/ nao quebrar confirmacao)
   try {
-    const phone = updated.customer_phone;
+    const phone = (updated.customer_phone || '').replace(/[^\d]/g, '');
     if (phone) {
       await db.run('INSERT INTO loyalty (phone, count) VALUES (?, 1) ON CONFLICT(phone) DO UPDATE SET count = count + 1', phone);
       const loyaltyRow = await db.get('SELECT count FROM loyalty WHERE phone=?', phone);
@@ -1063,9 +1071,10 @@ app.put('/api/orders/:id/confirm', async (req, res) => {
 });
 
 app.post('/api/loyalty/force-reward', adminAuth, async (req, res) => {
-  const { phone } = req.body;
+  const rawPhone = req.body.phone || '';
+  const phone = rawPhone.replace(/[^\d]/g, '');
   if (!phone) return res.status(400).json({ error: 'Telefone obrigatório' });
-  console.log('[force-reward] phone:', JSON.stringify(phone));
+  console.log('[force-reward] rawPhone:', JSON.stringify(rawPhone), 'normalized:', phone);
   const settings = await getSettings();
   const rewardProductId = parseInt(settings.loyalty_reward_product_id) || 0;
   const couponCode = `FIDEL-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
