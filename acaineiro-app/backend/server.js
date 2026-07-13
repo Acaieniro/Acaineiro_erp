@@ -279,6 +279,42 @@ async function initDB() {
   ]) {
     try { await db.run(sql); } catch (e) {}
   }
+  // Migrar telefones antigos em loyalty/loyalty_rewards para somente digitos
+  try {
+    const oldLoyalty = await db.all('SELECT id, phone, count FROM loyalty ORDER BY id');
+    const normMap = {};
+    for (const r of oldLoyalty) {
+      const norm = (r.phone || '').replace(/[^\d]/g, '');
+      if (!norm) continue;
+      if (norm !== r.phone) {
+        const existing = normMap[norm];
+        if (existing) {
+          try { await db.run('UPDATE loyalty SET count = count + ? WHERE id=?', r.count, existing); await db.run('DELETE FROM loyalty WHERE id=?', r.id); } catch (e2) {}
+        } else {
+          try { await db.run('UPDATE loyalty SET phone=? WHERE id=?', norm, r.id); normMap[norm] = r.id; } catch (e2) {}
+        }
+      } else {
+        normMap[r.phone] = r.id;
+      }
+    }
+    const oldRewards = await db.all('SELECT id, phone FROM loyalty_rewards ORDER BY id');
+    const normMap2 = {};
+    for (const r of oldRewards) {
+      const norm = (r.phone || '').replace(/[^\d]/g, '');
+      if (!norm) continue;
+      if (norm !== r.phone) {
+        if (normMap2[norm]) {
+          try { await db.run('DELETE FROM loyalty_rewards WHERE id=?', r.id); } catch (e2) {}
+        } else {
+          try { await db.run('UPDATE loyalty_rewards SET phone=? WHERE id=?', norm, r.id); normMap2[norm] = true; } catch (e2) {}
+        }
+      } else {
+        normMap2[r.phone] = true;
+      }
+    }
+    console.log('[migracao] telefones normalizados em loyalty/loyalty_rewards');
+  } catch (e) { console.log('[migracao] erro ao normalizar telefones:', e.message); }
+
   // Remover categorias nao usadas
   for (const slug of ['pratos', 'bebidas']) {
     try {
@@ -566,39 +602,28 @@ app.get('/api/loyalty/:phone', async (req, res) => {
   const raw = (req.params.phone || '').trim();
   const phone = raw.replace(/[^\d]/g, '');
   if (!phone) return res.json({ count: 0, rewards: [] });
-  // Tenta lookup com telefone normalizado; se nao achar, tenta raw (dados antigos)
-  let lookupPhone = phone;
   try {
-    // Tenta com normalized phone; se zero rows, tenta raw (dados antigos)
-    let lookupPhones = [lookupPhone];
-    if (raw && raw !== lookupPhone) lookupPhones.push(raw);
-    let rewards = [];
-    let productIds = [];
-    let count = 0;
-    for (const lp of lookupPhones) {
-      const loyalty = await db.get('SELECT * FROM loyalty WHERE phone=?', lp);
-      if (loyalty) { count = loyalty.count; }
-      const rows = await db.all(`SELECT lr.coupon_code, lr.created_at, lr.reward_product_id, lr.redeemed_at,
-        c.name as coupon_name, c.discount_percent, c.discount_value, c.description, c.image_url,
-        c.times_used, c.usage_limit
-        FROM loyalty_rewards lr LEFT JOIN coupons c ON lr.coupon_code = c.code
-        WHERE lr.phone=? ORDER BY lr.created_at DESC`, lp);
-      console.log('[GET loyalty] lookupPhone:', JSON.stringify(lp), 'rows:', rows.length, 'count:', count);
-      for (const r of rows) {
-        if (r.redeemed_at) continue;
-        const used = parseInt(r.usage_limit || 0) > 0 && parseInt(r.times_used || 0) >= parseInt(r.usage_limit);
-        if (used) continue;
-        const pid = parseInt(r.reward_product_id || 0);
-        if (pid > 0) productIds.push(pid);
-        if (!rewards.find(x => x.coupon_code === r.coupon_code)) rewards.push(r);
-      }
-      // Se achou rewards em um formato, nao precisa tentar o outro
-      if (rewards.length) break;
-    }
+    const loyalty = await db.get('SELECT * FROM loyalty WHERE phone=?', phone);
+    const count = loyalty ? loyalty.count : 0;
     // Garantir colunas (seguro: ja existe, ignora)
     try { await db.run("ALTER TABLE loyalty_rewards ADD COLUMN reward_product_id INTEGER DEFAULT 0"); } catch (e) {}
     try { await db.run("ALTER TABLE loyalty_rewards ADD COLUMN redeemed_at TEXT"); } catch (e) {}
-    // Buscar dados dos produtos em lote
+    const rows = await db.all(`SELECT lr.coupon_code, lr.created_at, lr.reward_product_id, lr.redeemed_at,
+      c.name as coupon_name, c.discount_percent, c.discount_value, c.description, c.image_url,
+      c.times_used, c.usage_limit
+      FROM loyalty_rewards lr LEFT JOIN coupons c ON lr.coupon_code = c.code
+      WHERE lr.phone=? ORDER BY lr.created_at DESC`, phone);
+    console.log('[GET loyalty] phone:', JSON.stringify(phone), 'rows encontradas:', rows.length, 'count:', count);
+    const rewards = [];
+    const productIds = [];
+    for (const r of rows) {
+      if (r.redeemed_at) continue;
+      const used = parseInt(r.usage_limit || 0) > 0 && parseInt(r.times_used || 0) >= parseInt(r.usage_limit);
+      if (used) continue;
+      const pid = parseInt(r.reward_product_id || 0);
+      if (pid > 0) productIds.push(pid);
+      if (!rewards.find(x => x.coupon_code === r.coupon_code)) rewards.push(r);
+    }
     if (productIds.length) {
       const ids = [...new Set(productIds)];
       const products = await db.all(`SELECT id, name, price, image_url FROM products WHERE id IN (${ids.join(',')})`);
