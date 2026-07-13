@@ -1747,6 +1747,10 @@ async function confirmDelivery() {
   try {
     const r = await fetch(`${API_URL}/api/orders/${currentTrackingId}/confirm`, { method: 'PUT' });
     const data = await r.json();
+    if (data.error) {
+      alert('❌ ' + data.error);
+      return;
+    }
     document.getElementById('btn-confirm-delivery').classList.add('hidden');
     updateTrackingUI(data);
     const saved = JSON.parse(localStorage.getItem('acaineiro_orders') || '[]');
